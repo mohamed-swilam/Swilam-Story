@@ -43,11 +43,11 @@ export default function StoryHeader({ story, formatDate }: StoryHeaderProps) {
           <button
             onClick={handleDelete}
             disabled={loading}
-            className={`px-4 py-2 rounded bg-red-600 text-white font-semibold hover:bg-red-700 transition-colors duration-200 ${
+            className={`px-3 py-2 rounded text-white font-semibold hover:bg-red-950 transition-colors duration-200 ${
               loading ? "opacity-50 cursor-not-allowed" : ""
             }`}
           >
-            {loading ? "Deleting..." : "Delete"}
+            <img src="/delete.png" alt="delete" className="w-5" />
           </button>
         )}
       </div>
