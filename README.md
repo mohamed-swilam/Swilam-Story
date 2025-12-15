@@ -278,7 +278,7 @@ Authorization: <token>
 ```
 
 
-## Project Folder Structure
+## Folder Structure
 
 This document shows the full folder structure of the backend and frontend for the Social Stories project.
 
