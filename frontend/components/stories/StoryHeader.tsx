@@ -42,7 +42,10 @@ export default function StoryHeader({ story, formatDate }: StoryHeaderProps) {
         {!story.mine && (
           <button
             onClick={handleDelete}
-            className=" text-white text-xl underline"
+            disabled={loading}
+            className={`px-4 py-2 rounded bg-red-600 text-white font-semibold hover:bg-red-700 transition-colors duration-200 ${
+              loading ? "opacity-50 cursor-not-allowed" : ""
+            }`}
           >
             {loading ? "Deleting..." : "Delete"}
           </button>
