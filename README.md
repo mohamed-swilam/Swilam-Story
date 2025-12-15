@@ -10,7 +10,7 @@ A full-stack social media feature that allows users to upload, view, and interac
 - [API Endpoints](#api-endpoints)  
 - [Folder Structure](#folder-structure)  
 - [Screenshots](#screenshots)  
-- [License](#license)  
+- [Technologies](#Technologies )  
 
 ## Features
 
@@ -25,7 +25,7 @@ A full-stack social media feature that allows users to upload, view, and interac
 
 ## Technologies
 
-**Frontend:**  
+**Frontend:**
 - React.js (Next.js App Router)  
 - Tailwind CSS  
 - TypeScript  
@@ -53,7 +53,6 @@ A full-stack social media feature that allows users to upload, view, and interac
 ### Installation
 
 1. Clone the repository:
-
 ```bash
 git clone https://github.com/mohamed-swilam/Swilam-Story.git
 cd Swilam-Story
@@ -61,13 +60,15 @@ cd Swilam-Story
 
 2. Install dependencies for backend:
 
-```cd backend
+```
+cd backend
 npm install
 ```
 
 3. Set up .env for backend:
 
-```PORT=3000
+```
+PORT=3000
 MONGO_URI=your_mongodb_uri
 CLOUDINARY_CLOUD_NAME=your_cloud_name
 CLOUDINARY_API_KEY=your_api_key
@@ -77,12 +78,14 @@ JWT_SECRET=your_jwt_secret
 
 4. Run backend:
 
-```npm run dev
+```
+npm run dev
 ```
 
 5. Install dependencies for frontend:
 
-```cd ../frontend
+```
+cd ../frontend
 npm install
 npm run dev
 ```
@@ -129,10 +132,10 @@ POST /user/register
 
 ```json
 {
-  "success": true,
-  "user": {
-    "id": "user_id",
+  "newUser": {
+    "_id": "user_id",
     "username": "username",
+    "password": "hashedPassrod"
     "user_pic": "profile_picture_url"
   }
 }
@@ -149,7 +152,7 @@ GET /stories/feed
 **Headers:**
 
 ```makefile
-Authorization: Bearer <token>
+Authorization: <token>
 ```
 
 **Response:**
@@ -157,27 +160,11 @@ Authorization: Bearer <token>
 ```json
 [
   {
-    "_id": "story_id",
-    "storyOwner": {
-      "username": "owner_name",
-      "user_pic": "owner_pic_url"
-    },
-    "media_url": "url_to_media",
-    "media_type": "image | video",
-    "duration": 5,
-    "viewers": [
-      {
-        "storyViewer": {
-          "_id": "viewer_id",
-          "username": "viewer_name",
-          "user_pic": "viewer_pic_url"
-        },
-        "viewed_at": "2025-12-15T10:00:00Z"
-      }
-    ],
-    "isViewed": false,
-    "createdAt": "2025-12-15T09:00:00Z",
-    "updatedAt": "2025-12-15T09:10:00Z"
+    "storyOwner": "owner_id",
+    "hasNewStory": true,
+    "username": "user_name",
+    "user_pic": "user_pic",
+    "latestStoryDate": "latestStoryDate"
   }
 ]
 ```
@@ -191,10 +178,31 @@ GET /stories/:user_id
 **Headers:**
 
 ```makefile
-Authorization: Bearer <token>
+Authorization: <token>
 ```
 
-**Response:** Same structure as feed but only for the specific user.
+**Response:** 
+```json
+[
+    {
+        "_id": "story_id",
+        "storyOwner": {
+            "_id": "owner_id",
+            "username": "owner_name",
+            "user_pic": "owner_pic"
+        },
+        "media_url": "story_url",
+        "media_type": "story_file_type",
+        "duration": 3,
+        "public_id": "cloudinary_public_id",
+        "createdAt": "date_of_create",
+        "updatedAt": "date_of_update",
+        "__v": 2,
+        "viewersCount": 2,
+        "mine": true
+    },
+]  
+```
 
 #### View Story
 
@@ -205,7 +213,7 @@ POST /stories/:story_id/view
 **Headers:**
 
 ```makefile
-Authorization: Bearer <token>
+Authorization: <token>
 ```
 
 **Response:**
@@ -226,7 +234,7 @@ POST /stories/upload
 **Headers:**
 
 ```makefile
-Authorization: Bearer <token>
+Authorization: <token>
 Content-Type: multipart/form-data
 ```
 
@@ -236,21 +244,16 @@ Content-Type: multipart/form-data
 
 ```json
 {
-  "success": true,
-  "story": {
-    "_id": "new_story_id",
-    "storyOwner": {
-      "username": "owner_name",
-      "user_pic": "owner_pic_url"
-    },
-    "media_url": "uploaded_media_url",
-    "media_type": "image | video",
-    "duration": 5,
+    "_id": "story_id",
+    "storyOwner": "owner_id",
+    "media_url": "story_uel",
+    "media_type": "story_file_type",
+    "duration": 3,
+    "public_id": "cloudinary_public_id",
     "viewers": [],
-    "isViewed": false,
-    "createdAt": "2025-12-15T10:00:00Z",
-    "updatedAt": "2025-12-15T10:00:00Z"
-  }
+    "createdAt": "date_of_create",
+    "updatedAt": "date_of_update",
+    "__v": 0
 }
 ```
 
@@ -263,7 +266,7 @@ DELETE /stories/:story_id
 **Headers:**
 
 ```makefile
-Authorization: Bearer <token>
+Authorization: <token>
 ```
 
 **Response:**
@@ -275,37 +278,96 @@ Authorization: Bearer <token>
 }
 ```
 
-## Technologies Used
 
-* Node.js
-* Express.js
-* MongoDB with Mongoose
-* JWT Authentication
-* Multer for file uploads
+## Project Folder Structure
 
-## Running Locally
+This document shows the full folder structure of the backend and frontend for the Social Stories project.
 
-1. Clone the repository:
+### Backend
 
-```bash
-git clone <repo_url>
+```
+backend/
+│
+├── node_modules/
+├── src/
+│   ├── config/
+│   │   └── db.js
+│   ├── controllers/
+│   │   ├── storyController.js
+│   │   └── userController.js
+│   ├── middlewares/
+│   │   ├── auth.js
+│   │   └── upload.js
+│   ├── models/
+│   │   ├── Story.js
+│   │   └── User.js
+│   ├── routes/
+│   │   ├── storyRoute.js
+│   │   └── userRoute.js
+│   ├── services/
+│   │   ├── cloudinaryDelete.js
+│   │   └── cloudinaryUpload.js
+│   ├── utils/
+│   │   ├── appError.js
+│   │   ├── cloudinary.js
+│   │   └── redis.js
+│   └── server.js
+├── .env
+├── package-lock.json
+└── package.json
 ```
 
-2. Install dependencies:
+### Frontend
 
-```bash
-npm install
+```
+frontend/
+│
+├── .next/
+├── app/
+│   ├── page.tsx
+│   ├── layout.tsx
+│   ├── globals.css
+│   ├── not-found.tsx
+│   ├── login/page.tsx
+│   ├── register/page.tsx
+│   └── stories/
+│       ├── feed/page.tsx
+│       ├── upload/page.tsx
+│       └── [user_id]/page.tsx
+├── components/
+│   ├── ProtectedPage.tsx
+│   └── stories/
+│       ├── ProgressBar.tsx
+│       ├── StoriesBar.tsx
+│       ├── StoryHeader.tsx
+│       ├── StoryMedia.tsx
+│       └── ViewersModel.tsx
+├── hooks/
+│   └── useStories.ts
+├── lib/
+│   ├── api.ts
+│   └── utils.ts
+├── node_modules/
+├── public/
+│   ├── file.svg
+│   ├── globe.svg
+│   ├── next.svg
+│   ├── user_profile.jpg
+│   ├── vercel.svg
+│   └── window.svg
+├── types/
+│   └── stories.ts
+├── components.json
+├── eslint.config.mjs
+├── next-env.d.ts
+├── next.config.ts
+├── package-lock.json
+├── package.json
+├── postcss.config.mjs
+└── tsconfig.json
 ```
 
-3. Create a `.env` file with your database URL and JWT secret.
-4. Run the server:
-
-```bash
-npm start
-```
-
-5. Test endpoints using Postman or similar tools.
 
 ## License
 
-This project is licensed under the MIT License.
+This project is created with Mohamed Hamad Swilam.

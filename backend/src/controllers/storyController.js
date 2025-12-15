@@ -2,86 +2,84 @@ const Story = require("../models/Story");
 const { uploadToCloudinary } = require("../services/cloudinaryUpload");
 const AppError = require("../utils/appError");
 
-const getAllStories = async (req, res,next) => {
+const getAllStories = async (req, res, next) => {
   try {
-    
     const userId = req.user.id;
     let stories = await Story.find({ storyOwner: { $ne: userId } })
-    .populate("storyOwner", "username user_pic")
-    .lean();
+      .populate("storyOwner", "username user_pic")
+      .lean();
     const feed = new Map();
     for (const story of stories) {
       const storyOwner = story.storyOwner._id.toString();
       const isViewed = story.viewers.some(
-      (v) => v.storyViewer.toString() === userId
-    );
-    if (!feed.has(storyOwner)) {
-      feed.set(storyOwner, {
-        storyOwner,
-        hasNewStory: !isViewed,
-        username: story.storyOwner.username,
-        user_pic: story.storyOwner.user_pic,
-        latestStoryDate: story.createdAt,
-      });
-    } else {
-      const feedItem = feed.get(storyOwner);
-      feedItem.hasNewStory = feedItem.hasNewStory || !isViewed;
-      if (new Date(story.createdAt) > new Date(feedItem.latestStoryDate)) {
-        feedItem.latestStoryDate = story.createdAt;
+        (v) => v.storyViewer.toString() === userId
+      );
+      if (!feed.has(storyOwner)) {
+        feed.set(storyOwner, {
+          storyOwner,
+          hasNewStory: !isViewed,
+          username: story.storyOwner.username,
+          user_pic: story.storyOwner.user_pic,
+          latestStoryDate: story.createdAt,
+        });
+      } else {
+        const feedItem = feed.get(storyOwner);
+        feedItem.hasNewStory = feedItem.hasNewStory || !isViewed;
+        if (new Date(story.createdAt) > new Date(feedItem.latestStoryDate)) {
+          feedItem.latestStoryDate = story.createdAt;
+        }
+        feed.set(storyOwner, feedItem);
       }
-      feed.set(storyOwner, feedItem);
     }
-  }
-  const feedArray = [...feed.values()].sort((a, b) => {
-    if (a.hasNewStory === b.hasNewStory) {
-      return new Date(b.latestStoryDate) - new Date(a.latestStoryDate);
-    }
-    return b.hasNewStory - a.hasNewStory;
-  });
+    const feedArray = [...feed.values()].sort((a, b) => {
+      if (a.hasNewStory === b.hasNewStory) {
+        return new Date(b.latestStoryDate) - new Date(a.latestStoryDate);
+      }
+      return b.hasNewStory - a.hasNewStory;
+    });
 
-  res.json(feedArray);
-} catch (err) {
-  next(err);
-}
+    res.json(feedArray);
+  } catch (err) {
+    next(err);
+  }
 };
 
 const getAllUserStories = async (req, res, next) => {
   try {
-    
     const user_id = req.user.id;
     const ownerId = req.params.user_id;
     let stories = await Story.find({ storyOwner: ownerId })
-    .sort({ createdAt: 1 })
-    .populate("storyOwner", "username user_pic")
-    .populate({
-      path: "viewers.storyViewer",
-      select: "username user_pic",
-    })
-    .lean();
-    
-    stories = stories.map((story) => {
-    if (story.viewers && story.viewers.length > 0) {
-      story.viewers.sort(
-        (a, b) => new Date(a.viewed_at) - new Date(b.viewed_at)
-      );
-    }
-    return {
-      ...story,
-      viewersCount: story.viewers?.length || 0,
-    };
-  });
+      .sort({ createdAt: 1 })
+      .populate("storyOwner", "username user_pic")
+      .populate({
+        path: "viewers.storyViewer",
+        select: "username user_pic",
+      })
+      .lean();
 
-  if (user_id.toString() !== ownerId.toString()) {
     stories = stories.map((story) => {
-      delete story.viewers;
-      return { ...story, mine: true };
+      if (story.viewers && story.viewers.length > 0) {
+        story.viewers.sort(
+          (a, b) => new Date(a.viewed_at) - new Date(b.viewed_at)
+        );
+      }
+      return {
+        ...story,
+        viewersCount: story.viewers?.length || 0,
+      };
     });
+
+    if (user_id.toString() !== ownerId.toString()) {
+      stories = stories.map((story) => {
+        delete story.viewers;
+        return { ...story, mine: true };
+      });
+    }
+
+    res.json(stories);
+  } catch (err) {
+    next(err);
   }
-  
-  res.json(stories);
-} catch (err) {
-  next(err);
-}
 };
 
 const storyView = async (req, res, next) => {
@@ -101,7 +99,10 @@ const storyView = async (req, res, next) => {
         await story.save();
       }
     }
-    res.json(story);
+    res.json({
+      success: true,
+      message: "Story viewed successfully",
+    });
   } catch (err) {
     next(err);
   }
