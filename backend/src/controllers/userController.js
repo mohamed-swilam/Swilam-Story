@@ -56,7 +56,10 @@ const register = async (req, res, next) => {
       password: passwordHashing,
     });
     await newUser.save();
-    res.status(201).json({ newUser });
+    res.status(201).json({
+      success: true,
+      message: "User registered successfully",
+    });
   } catch (err) {
     next(err);
   }

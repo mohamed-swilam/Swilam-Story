@@ -131,12 +131,8 @@ POST /user/register
 
 ```json
 {
-  "newUser": {
-    "_id": "user_id",
-    "username": "username",
-    "password": "hashedPassrod"
-    "user_pic": "profile_picture_url"
-  }
+    "success": true,
+    "message": "User registered successfully",
 }
 ```
 
@@ -164,7 +160,7 @@ Authorization: <token>
     "username": "user_name",
     "user_pic": "user_pic",
     "latestStoryDate": "latestStoryDate"
-  }
+  },
 ]
 ```
 
@@ -196,9 +192,10 @@ Authorization: <token>
         "public_id": "cloudinary_public_id",
         "createdAt": "date_of_create",
         "updatedAt": "date_of_update",
-        "__v": 2,
+        "viewers":[],
         "viewersCount": 2,
-        "mine": true
+        "mine": true,
+        "__v": 2,
     },
 ]  
 ```
