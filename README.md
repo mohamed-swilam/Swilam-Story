@@ -9,8 +9,7 @@ A full-stack social media feature that allows users to upload, view, and interac
 - [Getting Started](#getting-started)  
 - [API Endpoints](#api-endpoints)  
 - [Folder Structure](#folder-structure)  
-- [Screenshots](#screenshots)  
-- [Technologies](#Technologies )  
+- [License](#license)  
 
 ## Features
 
