@@ -89,7 +89,7 @@ npm install
 npm run dev
 ```
 
-6. Open browser at http://localhost:3000
+6. Open browser at http://localhost:3001
 
 
 ## API Endpoints
