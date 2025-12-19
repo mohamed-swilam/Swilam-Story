@@ -1,4 +1,4 @@
-# Stories Feature Project
+# Swichat Project
 
 A full-stack social media feature that allows users to upload, view, and interact with stories, similar to Instagram or Snapchat.
 
