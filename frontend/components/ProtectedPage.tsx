@@ -8,40 +8,19 @@ interface ProtectedPageProps {
   loadingBG:string | ""
 }
 
+import { useAuth } from "@/hooks/useAuth";
+
 const ProtectedPage: React.FC<ProtectedPageProps> = ({ children, loadingBG }) => {
-  const [loading, setLoading] = useState(true);
-  const [isAuth, setIsAuth] = useState(false);
+  const { isLoading, isAuthenticated } = useAuth();
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        if (!token) return;
-        const res = await API.authTest();
-        if (res.token) {
-          setIsAuth(true);
-        } else {
-          setIsAuth(false);
-        }
-      } catch (err) {
-        console.error(err);
-        setIsAuth(false);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkAuth();
-  }, []);
-
-  if (loading)
+  if (isLoading)
     return (
       <div className={`flex justify-center items-center h-screen ${loadingBG}`}>
         <div className="w-16 h-16 border-4 border-blue-500 border-dashed rounded-full animate-spin"></div>
       </div>
     );
 
-  if (!isAuth) {
+  if (!isAuthenticated) {
     return <NotFound />;
   }
 

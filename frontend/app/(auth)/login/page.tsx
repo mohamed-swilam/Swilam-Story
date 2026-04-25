@@ -21,7 +21,7 @@ export default function LoginPage() {
       localStorage.setItem("token", token);
       router.push("/stories/feed");
     } catch (err: any) {
-      setError(err.response.data.message);
+      setError(err.response?.data?.message || "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }

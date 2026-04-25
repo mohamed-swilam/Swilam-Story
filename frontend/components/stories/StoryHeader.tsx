@@ -3,61 +3,117 @@ import { useRouter } from "next/navigation";
 
 interface StoryHeaderProps {
   story: Story;
+  currentUserId?: string;
   formatDate: (date: string) => string;
+  pauseStory: () => void;
+  resumeStory: () => void;
+  onDeleteConfirmed: () => Promise<void>;
+  onClose: () => void;
 }
 import { Story } from "@/types/stories";
 import { useState } from "react";
-import { API } from "@/lib/api";
+import ConfirmModal from "@/components/modals/ConfirmModal";
 
-export default function StoryHeader({ story, formatDate }: StoryHeaderProps) {
+export default function StoryHeader({ 
+  story, 
+  currentUserId, 
+  formatDate,
+  pauseStory,
+  resumeStory,
+  onDeleteConfirmed,
+  onClose
+}: StoryHeaderProps) {
   const router = useRouter();
   const [error, setError] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
-  const handleDelete = async () => {
+  const isMine = story.mine || (currentUserId && story.storyOwner._id === currentUserId);
+
+  const handleDeleteClick = () => {
+    pauseStory();
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleCancelDelete = () => {
+    setIsDeleteModalOpen(false);
+    resumeStory();
+  };
+
+  const handleConfirmDelete = async () => {
     setError("");
     setLoading(true);
     try {
-      await API.deleteStory(story._id);
-      router.push(`/stories/feed`);
+      await onDeleteConfirmed();
+      setIsDeleteModalOpen(false);
     } catch (err: any) {
-      setError(err.response.data.message);
+      setError(err.response?.data?.message || "Failed to delete story");
+      resumeStory();
     } finally {
       setLoading(false);
     }
   };
-  return (
-    <div className="flex justify-between items-center gap-1 w-full mt-10 px-5">
-      <div className="flex gap-2 items-center">
-        <img
-          src={story.storyOwner.user_pic}
-          alt=""
-          className="w-8 h-8 object-cover rounded-full"
-        />
-        <span className="text-white font-bold">
-          {story.storyOwner.username}
-        </span>
-        <span className="text-white/70">{formatDate(story.createdAt)}</span>
 
-        {!story.mine && (
-          <button
-            onClick={handleDelete}
-            disabled={loading}
-            className={`px-3 py-2 rounded text-white font-semibold hover:bg-red-950 transition-colors duration-200 ${
-              loading ? "opacity-50 cursor-not-allowed" : ""
-            }`}
+  return (
+    <>
+      <div className="flex justify-between items-center gap-4 w-full px-2">
+        <div className="flex gap-3 items-center">
+          <button 
+            onClick={() => router.push(`/profile/${story.storyOwner._id}`)}
+            className="flex gap-3 items-center group"
           >
-            <img src="/delete.png" alt="delete" className="w-5" />
+            <img
+              src={story.storyOwner.user_pic || "/user_profile.jpg"}
+              alt={story.storyOwner.username}
+              className="w-10 h-10 object-cover rounded-full border-2 border-white/20 group-hover:border-white transition-all shadow-lg"
+            />
+            <div className="flex flex-col items-start">
+              <span className="text-white font-bold text-sm drop-shadow-md">
+                {story.storyOwner.username}
+              </span>
+              <span className="text-white/60 text-[10px] uppercase tracking-wider font-medium">
+                {formatDate(story.createdAt)}
+              </span>
+            </div>
           </button>
-        )}
+
+          {isMine && (
+            <button
+              onClick={handleDeleteClick}
+              disabled={loading}
+              className={`p-2 rounded-full text-white bg-red-500/10 hover:bg-red-500/40 transition-all ${
+                loading ? "opacity-50 cursor-not-allowed" : ""
+              }`}
+              title="Delete Story"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          )}
+        </div>
+
+        <button
+          onClick={onClose}
+          className="p-2 text-white/70 hover:text-white transition-colors hover:bg-white/10 rounded-full"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
       </div>
 
-      <button
-        onClick={() => router.push("/stories/feed")}
-        className=" text-white text-xl font-bold"
-      >
-        ✕
-      </button>
-    </div>
+      <ConfirmModal
+        isOpen={isDeleteModalOpen}
+        onClose={handleCancelDelete}
+        onConfirm={handleConfirmDelete}
+        title="Delete Story?"
+        description="This story will be permanently deleted."
+        confirmText="Delete"
+        cancelText="Cancel"
+        isLoading={loading}
+        type="danger"
+      />
+    </>
   );
 }

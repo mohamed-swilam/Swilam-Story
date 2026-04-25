@@ -22,6 +22,10 @@
     "multer-storage-cloudinary": "^4.0.0",
     "nodemon": "^3.1.11",
     "redis": "^5.10.0",
+    "socket.io": "^4.8.3",
     "streamifier": "^0.1.1"
+  },
+  "overrides": {
+    "cloudinary": "^2.9.0"
   }
 }

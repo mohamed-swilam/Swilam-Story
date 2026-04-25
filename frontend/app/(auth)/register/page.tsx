@@ -35,7 +35,7 @@ export default function Register() {
       await API.register(formData);
       router.push("/login");
     } catch (err: any) {
-      setError(err.response.data.message);
+      setError(err.response?.data?.message || "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
