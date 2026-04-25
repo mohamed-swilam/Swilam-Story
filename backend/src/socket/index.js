@@ -14,7 +14,7 @@ const ONLINE_TTL = 30; // seconds
  * Skips if: recipient has blocked sender, preference is off, or a duplicate
  * unread notification exists within the last 60 seconds.
  */
-async function createAndEmitNotification(io, { recipient, sender, type, storyId, conversationId, messagePreview }) {
+async function createAndEmitNotification(io, { recipient, sender, type, storyId, conversationId, messagePreview, reaction }) {
   try {
     // 1. Don't notify yourself
     if (recipient.toString() === sender.toString()) return;
@@ -30,11 +30,11 @@ async function createAndEmitNotification(io, { recipient, sender, type, storyId,
 
     // 4. Check notification preferences
     const prefs = recipientUser.notificationSettings || {};
-    if (type === "message"    && prefs.messages  === false) return;
-    if (type === "follow"     && prefs.follows   === false) return;
-    if (type === "story_view" && prefs.storyViews === false) return;
-    // story_reply doesn't have a specific setting, usually tied to messages, but the prompt says keep story_reply only in the list.
-    // We removed the toggle, so story replies are always sent automatically.
+    if (type === "message"        && prefs.messages       === false) return;
+    if (type === "follow"         && prefs.follows        === false) return;
+    if (type === "story_view"     && prefs.storyViews     === false) return;
+    if (type === "story_reply"    && prefs.storyReplies   === false) return;
+    if (type === "story_reaction" && prefs.storyReactions === false) return;
 
     // 5. Dedup: skip if same unread notification within 60 seconds
     const oneMinuteAgo = new Date(Date.now() - 60_000);
@@ -48,7 +48,7 @@ async function createAndEmitNotification(io, { recipient, sender, type, storyId,
     if (existing) return;
 
     // 6. Create
-    const notif = await Notification.create({ recipient, sender, type, storyId, conversationId, messagePreview });
+    const notif = await Notification.create({ recipient, sender, type, storyId, conversationId, messagePreview, reaction });
     await notif.populate("sender", "username user_pic");
 
     // 7. Emit to recipient's private room
@@ -94,12 +94,14 @@ const initSocket = (httpServer) => {
     // Mark user online
     await redis.set(`user:${userId}:online`, "1", { EX: ONLINE_TTL });
     
-    // Notify followers/everyone based on visibility
-    if (socket.user.lastSeenVisibility !== "nobody") {
+    const visibility = socket.user.lastSeenVisibility || "everyone";
+
+    // Notify others based on visibility
+    if (visibility !== "nobody") {
       socket.broadcast.emit("user_online", { 
         userId, 
-        visibility: socket.user.lastSeenVisibility,
-        followersOnly: socket.user.lastSeenVisibility === "followers"
+        visibility,
+        followersOnly: visibility === "followers"
       });
     }
 
@@ -115,9 +117,10 @@ const initSocket = (httpServer) => {
     });
 
     // ── send_message ─────────────────────────────────────────────────────────
-    socket.on("send_message", async ({ conversationId, content, type = "text", fileUrl = "", fileName = "", fileSize = 0, storyReply }) => {
+    socket.on("send_message", async ({ conversationId, content, type = "text", fileUrl = "", fileName = "", fileSize = 0, storyReply, replyTo, voiceMessage }) => {
+      // replyTo shape (optional): { messageId, content, senderUsername }
       try {
-        if (!content?.trim() && !fileUrl && !storyReply) return;
+        if (!content?.trim() && !fileUrl && !storyReply && !voiceMessage) return;
 
         const conversation = await Conversation.findOne({ _id: conversationId }).populate("participants", "isPrivate blockedUsers followers following");
         if (!conversation || !conversation.participants.some(p => p._id.toString() === userId)) return;
@@ -132,7 +135,7 @@ const initSocket = (httpServer) => {
           }
           
           // 2. Check if private
-          if (recipient.isPrivate) {
+          if (recipient.isPrivate && !storyReply) {
             const recipientFollowsSender = recipient.following?.some(id => id.toString() === userId.toString());
             if (!recipientFollowsSender && !conversation.isGroup) {
               return socket.emit("error_message", { message: "This account is private. You can only message them if they follow you." });
@@ -148,8 +151,15 @@ const initSocket = (httpServer) => {
           fileUrl,
           fileName,
           fileSize,
-          replyTo: replyTo || null,
+          voiceMessage, // { url, duration, publicId, waveformData }
           readBy: [new mongoose.Types.ObjectId(userId)],
+          ...(replyTo?.messageId ? {
+            replyTo: {
+              messageId: replyTo.messageId,
+              content: (replyTo.content || "").slice(0, 100),
+              senderUsername: replyTo.senderUsername || "",
+            }
+          } : {}),
         };
         if (storyReply) {
           messageData.storyReply = storyReply;
@@ -159,7 +169,6 @@ const initSocket = (httpServer) => {
         await message.save();
         await message.populate([
           { path: "sender", select: "username user_pic" },
-          { path: "replyTo", populate: { path: "sender", select: "username" } }
         ]);
 
         await Conversation.findByIdAndUpdate(conversationId, {
@@ -209,13 +218,14 @@ const initSocket = (httpServer) => {
 
         // 2. If visibility preference changed, re-broadcast status
         if (oldVisibility !== freshUser.lastSeenVisibility) {
-          if (freshUser.lastSeenVisibility === "nobody") {
+          const visibility = freshUser.lastSeenVisibility || "everyone";
+          if (visibility === "nobody") {
             socket.broadcast.emit("user_offline", { userId });
           } else {
             socket.broadcast.emit("user_online", { 
               userId, 
-              visibility: freshUser.lastSeenVisibility,
-              followersOnly: freshUser.lastSeenVisibility === "followers"
+              visibility,
+              followersOnly: visibility === "followers"
             });
           }
         }
@@ -308,11 +318,12 @@ const initSocket = (httpServer) => {
       console.log(`Socket disconnected: ${socket.user.username} (${userId})`);
       await redis.del(`user:${userId}:online`);
       
-      if (socket.user.lastSeenVisibility !== "nobody") {
+      const visibility = socket.user.lastSeenVisibility || "everyone";
+      if (visibility !== "nobody") {
         socket.broadcast.emit("user_offline", { 
           userId,
-          visibility: socket.user.lastSeenVisibility,
-          followersOnly: socket.user.lastSeenVisibility === "followers"
+          visibility,
+          followersOnly: visibility === "followers"
         });
       }
     });

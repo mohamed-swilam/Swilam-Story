@@ -1,5 +1,6 @@
 import TopNavbar from "@/components/TopNavbar";
 import ProtectedPage from "@/components/ProtectedPage";
+import SocketListeners from "@/components/SocketListeners";
 
 export default function MainLayout({
   children,
@@ -8,6 +9,7 @@ export default function MainLayout({
 }>) {
   return (
     <ProtectedPage loadingBG="">
+      <SocketListeners />
       <div className="relative h-[100dvh] bg-background text-foreground flex flex-col overflow-hidden">
         <TopNavbar />
         <main className="flex-1 w-full overflow-hidden mt-16 relative">

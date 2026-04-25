@@ -32,7 +32,7 @@ export default function ProfilePage() {
         {/* Header Section */}
         <div className="relative group">
           <div className="absolute -inset-1 bg-gradient-to-r from-primary to-purple-600 rounded-3xl blur opacity-25 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"></div>
-          <section className="relative bg-card/80 rounded-3xl p-8 flex flex-col md:flex-row items-center gap-8 border border-white/10 shadow-2xl overflow-hidden">
+          <section className="relative bg-card rounded-3xl p-8 flex flex-col md:flex-row items-center gap-8 border border-border shadow-2xl overflow-hidden">
             {/* Background Accent */}
             <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-primary/10 rounded-full blur-3xl"></div>
             
@@ -44,14 +44,14 @@ export default function ProfilePage() {
                   className="w-full h-full rounded-full object-cover border-4 border-card shadow-inner"
                 />
               </div>
-              <button className="absolute bottom-2 right-2 bg-primary text-white p-2.5 rounded-full shadow-xl hover:scale-110 active:scale-95 transition-all ring-4 ring-card">
+              <button className="absolute bottom-2 right-2 bg-primary text-primary-foreground p-2.5 rounded-full shadow-xl hover:scale-110 active:scale-95 transition-all ring-4 ring-card">
                 <Settings size={18} />
               </button>
             </div>
 
             <div className="flex-1 text-center md:text-left space-y-4">
               <div>
-                <h2 className="text-3xl md:text-4xl font-black text-white tracking-tight">{user.username || "Loading..."}</h2>
+                <h2 className="text-3xl md:text-4xl font-black text-foreground tracking-tight">{user.username || "Loading..."}</h2>
                 <p className="text-primary font-medium mt-1">@{user.username.toLowerCase()}</p>
               </div>
 
@@ -66,15 +66,15 @@ export default function ProfilePage() {
                   onClick={() => router.push(`/profile/${user.id}/followers`)}
                   className="text-center md:text-left hover:opacity-80 transition-opacity"
                 >
-                  <p className="text-xl font-bold text-white">{counts.followers}</p>
+                  <p className="text-xl font-bold text-foreground">{counts.followers}</p>
                   <p className="text-xs text-muted-foreground uppercase tracking-widest font-bold">Followers</p>
                 </button>
-                <div className="w-px h-8 bg-border/50"></div>
+                <div className="w-px h-8 bg-border"></div>
                 <button 
                   onClick={() => router.push(`/profile/${user.id}/following`)}
                   className="text-center md:text-left hover:opacity-80 transition-opacity"
                 >
-                  <p className="text-xl font-bold text-white">{counts.following}</p>
+                  <p className="text-xl font-bold text-foreground">{counts.following}</p>
                   <p className="text-xs text-muted-foreground uppercase tracking-widest font-bold">Following</p>
                 </button>
               </div>
@@ -86,7 +86,7 @@ export default function ProfilePage() {
         <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-4">
             <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest px-2">Account</h3>
-            <div className="bg-card/50 rounded-2xl border border-white/5 divide-y divide-white/5 overflow-hidden backdrop-blur-md">
+            <div className="bg-card rounded-2xl border border-border divide-y divide-border overflow-hidden shadow-sm">
               <MenuButton href="/profile/edit" icon={<User size={20} />} title="Edit Profile" desc="Change name, bio, and photo" />
               <MenuButton href="/profile/notifications" icon={<Bell size={20} />} title="Notifications" desc="Push, email and system alerts" />
               <MenuButton href="/profile/privacy" icon={<Shield size={20} />} title="Privacy" desc="Visibility and blocked users" />
@@ -95,14 +95,14 @@ export default function ProfilePage() {
 
           <div className="space-y-4">
             <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest px-2">App Settings</h3>
-            <div className="bg-card/50 rounded-2xl border border-white/5 divide-y divide-white/5 overflow-hidden backdrop-blur-md">
+            <div className="bg-card rounded-2xl border border-border divide-y divide-border overflow-hidden shadow-sm">
               <MenuButton href="/profile/appearance" icon={<Settings size={20} />} title="Appearance" desc="Theme, font size and colors" />
               <MenuButton href="/profile/data" icon={<Settings size={20} />} title="Data Usage" desc="Media quality and storage" />
             </div>
             
             <button 
               onClick={logout}
-              className="w-full flex items-center justify-center gap-3 p-4 rounded-2xl bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive hover:text-white transition-all duration-300 font-bold group"
+              className="w-full flex items-center justify-center gap-3 p-4 rounded-2xl bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive hover:text-white transition-all duration-300 font-bold group mt-4"
             >
               <LogOut size={20} className="group-hover:-translate-x-1 transition-transform" />
               Log Out
@@ -120,13 +120,13 @@ export default function ProfilePage() {
 
 function MenuButton({ icon, title, desc, href }: { icon: React.ReactNode, title: string, desc: string, href: string }) {
   return (
-    <Link href={href} className="w-full flex items-center justify-between p-5 hover:bg-white/5 transition-all text-left group">
+    <Link href={href} className="w-full flex items-center justify-between p-5 hover:bg-muted/50 transition-all text-left group">
       <div className="flex items-center gap-4">
-        <div className="p-2.5 bg-primary/10 rounded-xl text-primary group-hover:bg-primary group-hover:text-white transition-all duration-300">
+        <div className="p-2.5 bg-primary/10 rounded-xl text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300">
           {icon}
         </div>
         <div>
-          <p className="font-bold text-white group-hover:text-primary transition-colors">{title}</p>
+          <p className="font-bold text-foreground group-hover:text-primary transition-colors">{title}</p>
           <p className="text-xs text-muted-foreground line-clamp-1">{desc}</p>
         </div>
       </div>

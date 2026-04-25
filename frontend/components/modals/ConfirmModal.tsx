@@ -55,7 +55,7 @@ export default function ConfirmModal({
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-background/80 backdrop-blur-md animate-fadeIn">
-      <div className="bg-card border border-white/10 rounded-[2.5rem] p-8 max-w-sm w-full shadow-2xl shadow-black/50 space-y-6 animate-scaleIn relative overflow-hidden">
+      <div className="bg-card border border-white/10 rounded-[2.5rem] p-8 max-w-sm w-full shadow-2xl shadow-black/50 space-y-6 animate-modal-in relative overflow-hidden">
         {/* Subtle Background Glow */}
         <div className={`absolute top-0 right-0 -mr-16 -mt-16 w-32 h-32 rounded-full blur-3xl opacity-20 ${type === 'danger' ? 'bg-destructive' : type === 'warning' ? 'bg-yellow-500' : 'bg-green-500'}`}></div>
 

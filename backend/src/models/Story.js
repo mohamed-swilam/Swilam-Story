@@ -8,6 +8,10 @@ const storyViewSchema = mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  reaction: {
+    type: String,
+    default: null,
+  },
   _id: false,
 });
 
@@ -20,21 +24,31 @@ const storySchema = mongoose.Schema(
     },
     media_url: {
       type: String,
-      required: true,
+      required: function() { return this.media_type === "image" || this.media_type === "video" || this.media_type === "voice"; }
     },
     media_type: {
       type: String,
-      enum: ["image", "video"],
+      enum: ["image", "video", "text", "voice"],
       required: true,
     },
     duration: {
       type: Number,
       required: true,
       min: 1,
+      default: 5, // Default 5 seconds for text/image
     },
     public_id: {
       type: String,
-      required: true,
+      required: function() { return this.media_type === "image" || this.media_type === "video" || this.media_type === "voice"; }
+    },
+    content: {
+      type: String, // For text stories
+    },
+    bg_color: {
+      type: String, // For text stories
+    },
+    waveformData: {
+      type: [Number], // For voice stories
     },
     viewers: {
       type: [storyViewSchema],

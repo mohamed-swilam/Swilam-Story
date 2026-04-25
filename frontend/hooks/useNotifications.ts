@@ -59,20 +59,34 @@ export function useNotifications() {
     return () => { socket.off("new_notification", onNew); };
   }, [socket, queryClient]);
 
-  const markAllRead = useCallback(async () => {
+  const markAllRead = useCallback(async (types?: string[]) => {
     try {
-      await API.markAllRead();
+      await API.markAllRead(types);
       queryClient.setQueryData(queryKeys.notifications, (old: any) => {
         if (!old) return old;
         return {
           ...old,
-          pages: old.pages.map((page: any) => ({
-            ...page,
-            unreadCount: 0,
-            notifications: page.notifications.map((n: any) => ({ ...n, read: true })),
-          })),
+          pages: old.pages.map((page: any) => {
+            let newlyReadCount = 0;
+            const updatedNotifs = page.notifications.map((n: any) => {
+              const isTargetType = !types || types.includes(n.type);
+              if (isTargetType && !n.read) {
+                newlyReadCount++;
+                return { ...n, read: true };
+              }
+              return n;
+            });
+
+            return {
+              ...page,
+              notifications: updatedNotifs,
+              unreadCount: Math.max(0, (page.unreadCount || 0) - newlyReadCount)
+            };
+          }),
         };
       });
+      // Force invalidate to ensure total sync
+      queryClient.invalidateQueries({ queryKey: queryKeys.notifications });
     } catch (err) {
       console.error(err);
     }

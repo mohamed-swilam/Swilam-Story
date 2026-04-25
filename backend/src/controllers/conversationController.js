@@ -79,6 +79,7 @@ const getMessages = async (req, res, next) => {
     const { id: conversationId } = req.params;
     const userId = req.user.id;
     const page = parseInt(req.query.page) || 1;
+    const search = req.query.search || "";
     const limit = 20;
     const skip = (page - 1) * limit;
 
@@ -91,10 +92,16 @@ const getMessages = async (req, res, next) => {
       throw new AppError("Conversation not found", 404);
     }
 
-    const messages = await Message.find({ 
+    const query = { 
       conversationId,
       deletedFor: { $ne: new mongoose.Types.ObjectId(userId) }
-    })
+    };
+
+    if (search) {
+      query.content = { $regex: search, $options: "i" };
+    }
+
+    const messages = await Message.find(query)
       .populate("sender", "username user_pic")
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -392,9 +399,14 @@ const uploadFile = async (req, res, next) => {
     if (!req.file) throw new AppError("No file uploaded", 400);
 
     const isImage = req.file.mimetype.startsWith("image/");
+    const isVideo = req.file.mimetype.startsWith("video/");
     const isAudio = req.file.mimetype.startsWith("audio/");
     
-    const resourceType = isImage ? "image" : (isAudio ? "video" : "raw"); // Cloudinary uses 'video' for audio
+    // Cloudinary can automatically detect the resource type, but we can be explicit
+    // 'video' is used for both video and audio in Cloudinary
+    let resourceType = "raw";
+    if (isImage) resourceType = "image";
+    else if (isVideo || isAudio) resourceType = "video";
     
     const uploadResult = await uploadToCloudinary(req.file.buffer, {
       folder: "messages",
@@ -555,6 +567,28 @@ const reactToMessage = async (req, res, next) => {
   }
 };
 
+const uploadVoiceMessage = async (req, res, next) => {
+  try {
+    if (!req.file) throw new AppError("No audio uploaded", 400);
+
+    const { duration } = req.body;
+
+    const uploadResult = await uploadToCloudinary(req.file.buffer, {
+      folder: "voice_messages",
+      resource_type: "video", // Cloudinary uses video for audio files
+    });
+
+    res.json({
+      success: true,
+      url: uploadResult.secure_url,
+      publicId: uploadResult.public_id,
+      duration: parseFloat(duration) || 0,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getConversations,
   getConversation,
@@ -565,6 +599,7 @@ module.exports = {
   removeParticipant,
   leaveGroup,
   uploadFile,
+  uploadVoiceMessage,
   getUnreadCount,
   deleteConversation,
   deleteMessage,

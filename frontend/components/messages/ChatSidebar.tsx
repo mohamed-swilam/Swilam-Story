@@ -70,7 +70,7 @@ export default function ChatSidebar() {
     const onMessageReceived = (msg: any) => {
       queryClient.setQueryData(queryKeys.chats, (old: Conversation[] | undefined) => {
         if (!old) return old;
-        const index = old.findIndex((c) => c._id === msg.conversationId);
+        const index = old.findIndex((c) => c._id.toString() === msg.conversationId.toString());
         
         if (index !== -1) {
           const updatedConversations = [...old];
@@ -159,7 +159,7 @@ export default function ChatSidebar() {
   return (
     <aside className={`h-full bg-card border-r border-border overflow-hidden flex flex-col flex-shrink-0 ${pathname === '/messages' ? 'w-full md:w-80' : 'hidden md:flex md:w-80'}`}>
       <div className="p-4 border-b border-border flex items-center justify-between sticky top-0 bg-card z-10">
-        <h2 className="text-xl font-bold text-white">Chats</h2>
+        <h2 className="text-xl font-bold text-foreground">Chats</h2>
         <button
           onClick={() => setIsCreateGroupOpen(true)}
           className="text-primary font-semibold text-sm hover:text-primary/80 transition-colors"
@@ -179,20 +179,21 @@ export default function ChatSidebar() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                 d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
             </svg>
-            <p className="text-sm font-semibold text-white">No chats yet</p>
+            <p className="text-sm font-semibold text-foreground">No chats yet</p>
             <p className="text-xs">
               Find someone in Explore and start a DM.
             </p>
           </div>
         ) : (
           <div className="divide-y divide-border">
-            {conversations.map((conv) => (
-              <ConversationItem
-                key={conv._id}
-                conversation={conv}
-                currentUserId={currentUser?.id}
-                isOnline={conv.participant ? !!onlineStatus[conv.participant._id] : false}
-              />
+            {conversations.map((conv, index) => ( 
+              <div key={conv._id} className={`stagger-item stagger-delay-${Math.min(index + 1, 5)}`}>
+                <ConversationItem
+                  conversation={conv}
+                  currentUserId={currentUser?.id}
+                  isOnline={conv.participant ? !!onlineStatus[conv.participant._id] : false}
+                />
+              </div>
             ))}
           </div>
         )}

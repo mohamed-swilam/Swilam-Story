@@ -45,14 +45,18 @@ export default function StorySidebar() {
   useEffect(() => {
     if (!socket) return;
 
-    const onNewStory = () => {
+    const onNewStory = (data: { storyOwner: string }) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.feed });
-      queryClient.invalidateQueries({ queryKey: queryKeys.userStories(currentUser?._id || currentUser?.id || "") });
+      if (data.storyOwner) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.userStories(data.storyOwner) });
+      }
     };
 
-    const onStoryDeleted = () => {
+    const onStoryDeleted = (data: { storyOwner: string }) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.feed });
-      queryClient.invalidateQueries({ queryKey: queryKeys.userStories(currentUser?._id || currentUser?.id || "") });
+      if (data.storyOwner) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.userStories(data.storyOwner) });
+      }
     };
 
     const onPrivacyUpdate = () => {
@@ -99,10 +103,10 @@ export default function StorySidebar() {
   return (
     <aside className={`h-full bg-card border-r border-border overflow-y-auto flex flex-col flex-shrink-0 ${pathname === '/stories/feed' ? 'w-full md:w-80' : 'hidden md:flex md:w-80'}`}>
       <div className="p-4 border-b border-border sticky top-0 bg-card z-10 flex items-center justify-between">
-        <h2 className="text-xl font-bold text-white tracking-tight">Stories</h2>
+        <h2 className="text-xl font-bold text-foreground tracking-tight">Stories</h2>
         <Link 
           href="/stories/upload"
-          className="p-2 bg-primary/10 text-primary hover:bg-primary hover:text-white rounded-full transition-all duration-300 group"
+          className="p-2 bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground rounded-full transition-all duration-300 group"
           title="Add Story"
         >
           <svg className="w-5 h-5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -116,7 +120,7 @@ export default function StorySidebar() {
           <button
             onClick={() => handleStoryClick(currentUser._id || currentUser.id, hasOwnStory)}
             className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all duration-200 mb-2 ${
-              pathname?.includes(`/stories/${currentUser._id || currentUser.id}`) ? "bg-secondary" : "hover:bg-secondary/50"
+              pathname?.includes(`/stories/${currentUser._id || currentUser.id}`) ? "bg-foreground/10" : "hover:bg-foreground/5"
             }`}
           >
             <div className="relative">
@@ -128,13 +132,13 @@ export default function StorySidebar() {
                 }`}
               />
               {!hasOwnStory && (
-                <div className="absolute bottom-0 right-0 bg-primary text-white w-4 h-4 rounded-full flex items-center justify-center border-2 border-background text-xs font-bold leading-none pb-[1px] pl-[1px]">
+                <div className="absolute bottom-0 right-0 bg-primary text-primary-foreground w-4 h-4 rounded-full flex items-center justify-center border-2 border-background text-xs font-bold leading-none pb-[1px] pl-[1px]">
                   +
                 </div>
               )}
             </div>
             <div className="flex-1 min-w-0 text-left">
-              <p className={`font-semibold truncate ${pathname?.includes(`/stories/${currentUser._id || currentUser.id}`) ? "text-white" : "text-gray-200"}`}>
+              <p className={`font-semibold truncate ${pathname?.includes(`/stories/${currentUser._id || currentUser.id}`) ? "text-primary font-bold" : "text-foreground"}`}>
                 Your Story
               </p>
               <p className="text-xs text-muted-foreground truncate">
@@ -156,7 +160,7 @@ export default function StorySidebar() {
                 key={item.storyOwner}
                 onClick={() => handleStoryClick(item.storyOwner, true)}
                 className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all duration-200 ${
-                  isActive ? "bg-secondary" : "hover:bg-secondary/50"
+                  isActive ? "bg-foreground/10" : "hover:bg-foreground/5"
                 }`}
               >
                 <div className="relative">
@@ -169,7 +173,7 @@ export default function StorySidebar() {
                   />
                 </div>
                 <div className="flex-1 min-w-0 text-left">
-                  <p className={`font-semibold truncate ${isActive ? "text-white" : "text-gray-200"}`}>
+                  <p className={`font-semibold truncate ${isActive ? "text-primary font-bold" : "text-foreground"}`}>
                     {item.username}
                   </p>
                   <p className="text-xs text-muted-foreground truncate">

@@ -37,7 +37,7 @@ export default function ConversationItem({ conversation, isOnline, currentUserId
   return (
     <button
       onClick={() => router.push(`/messages/${conversation._id}`)}
-      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-all duration-200 border-b border-white/5 group"
+      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-foreground/5 transition-all duration-200 border-b border-border group"
     >
       {/* Avatar + online dot */}
       <div className="relative flex-shrink-0">
@@ -47,14 +47,14 @@ export default function ConversationItem({ conversation, isOnline, currentUserId
           className="w-12 h-12 rounded-full object-cover ring-2 ring-transparent group-hover:ring-primary transition-all shadow-md"
         />
         {isOnline && !isGroup && (
-          <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-background" />
+          <span className="absolute bottom-0.5 right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-background animate-online-pulse shadow-[0_0_8px_rgba(34,197,94,0.4)]" />
         )}
       </div>
 
       {/* Text */}
       <div className="flex-1 min-w-0 text-left">
         <div className="flex items-center justify-between">
-          <span className="font-bold text-sm text-white truncate group-hover:text-primary transition-colors">
+          <span className="font-bold text-sm text-foreground truncate group-hover:text-primary transition-colors">
             {displayName}
           </span>
           <span className="text-[10px] text-muted-foreground ml-2 flex-shrink-0 font-medium uppercase tracking-tight">
@@ -75,16 +75,17 @@ export default function ConversationItem({ conversation, isOnline, currentUserId
               )}
               <p className="text-sm text-muted-foreground truncate font-medium">
                 {lastMessage ? (
-                  lastMessage.type === "image" ? "📷 Photo" :
-                  lastMessage.type === "file" ? "📁 File" :
-                  lastMessage.type === "voice" ? "🎤 Voice message" :
-                  lastMessage.content
-                ) : "Start a conversation"}
+                    lastMessage.type === "image"  ? "📷 Photo" :
+                    lastMessage.type === "video"  ? "🎬 Video" :
+                    lastMessage.type === "voice"  ? "🎤 Voice message" :
+                    lastMessage.type === "file"   ? "📁 File" :
+                    lastMessage.content
+                  ) : "Start a conversation"}
               </p>
             </div>
           )}
           {unreadCount > 0 && (
-            <span className="ml-2 flex-shrink-0 bg-primary text-white text-[10px] rounded-full min-w-[1.25rem] h-5 px-1 flex items-center justify-center font-bold shadow-[0_0_10px_rgba(168,85,247,0.4)]">
+            <span className="ml-2 flex-shrink-0 bg-primary text-primary-foreground text-[10px] rounded-full min-w-[1.25rem] h-5 px-1 flex items-center justify-center font-bold shadow-[0_0_10px_rgba(var(--primary-rgb),0.4)] animate-unread-scale">
               {unreadCount > 9 ? "9+" : unreadCount}
             </span>
           )}

@@ -2,18 +2,21 @@ import { useEffect, useState, useRef } from "react";
 import { API } from "@/lib/api";
 import { Story } from "@/types/stories";
 import { useSocket } from "./useSocket";
+import { useAuth } from "./useAuth";
 
 interface UseStoriesProps {
   userId: string;
   initialIndex?: number;
+  storyId?: string;
 }
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 
-export function useStories({ userId, initialIndex = 0 }: UseStoriesProps) {
+export function useStories({ userId, initialIndex = 0, storyId }: UseStoriesProps) {
   const queryClient = useQueryClient();
-  const { data: stories = [], isLoading: loading } = useQuery({
+  const { user: currentUser } = useAuth();
+  const { data: stories = [], isLoading: loading, isFetching } = useQuery<Story[]>({
     queryKey: queryKeys.userStories(userId),
     queryFn: () => API.getUserStories(userId),
     enabled: !!userId,
@@ -22,7 +25,6 @@ export function useStories({ userId, initialIndex = 0 }: UseStoriesProps) {
   });
 
   const [readyStories, setReadyStories] = useState<boolean[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const socket = useSocket();
 
@@ -31,27 +33,87 @@ export function useStories({ userId, initialIndex = 0 }: UseStoriesProps) {
   const startTimeRef = useRef<number>(0);
   const deletingRef = useRef(false);
 
+  const [currentIndex, setCurrentIndex] = useState(initialIndex);
+  const hasSetInitialRef = useRef(false);
+
   useEffect(() => {
-    setCurrentIndex(initialIndex);
+    // Wait for fresh data before finding the correct story
+    if (isFetching) return;
+    if (stories.length === 0) return;
+    if (hasSetInitialRef.current) return;
+
+    hasSetInitialRef.current = true;
+
+    if (storyId) {
+      // Navigate to the specific story by ID
+      const idx = stories.findIndex(s => s._id === storyId);
+      if (idx !== -1) {
+        setCurrentIndex(idx);
+        return;
+      }
+    }
+
+    // Default: jump to first unviewed (only when initialIndex === 0)
+    if (initialIndex !== 0) return;
+    const firstUnviewed = stories.findIndex(s => !s.isViewed);
+    if (firstUnviewed !== -1) {
+      setCurrentIndex(firstUnviewed);
+    }
+  }, [stories, initialIndex, isFetching, storyId]);
+
+  useEffect(() => {
+    // Only reset currentIndex to initialIndex when there's no storyId target.
+    // If storyId is present, the storyId effect below handles the correct index.
+    if (!storyId) {
+      setCurrentIndex(initialIndex);
+    }
     setIsPaused(false);
     deletingRef.current = false;
-  }, [initialIndex]);
+    // hasSetInitialRef resets automatically on remount (new user navigation)
+  }, [initialIndex, storyId]);
 
   // Handle socket updates to stories cache
   useEffect(() => {
     if (!socket || !userId) return;
 
-    const onStoryViewed = (data: { storyId: string; viewer: any; viewedAt: string }) => {
+    const onNewViewer = (data: { storyId: string; viewer: any; viewedAt: string; viewed_at?: string }) => {
       queryClient.setQueryData(queryKeys.userStories(userId), (old: Story[] | undefined) => {
         if (!old) return old;
         return old.map((s) => {
           if (s._id === data.storyId) {
-            const exists = s.viewers?.some(v => v.storyViewer._id === data.viewer._id);
+            const exists = s.viewers?.some(v => v.storyViewer._id === data.viewer.userId);
             if (exists) return s;
             return {
               ...s,
               viewersCount: (s.viewersCount || 0) + 1,
-              viewers: s.viewers ? [...s.viewers, { storyViewer: data.viewer, viewed_at: data.viewedAt }] : undefined
+              viewers: s.viewers ? [...s.viewers, { 
+                storyViewer: {
+                  _id: data.viewer.userId,
+                  username: data.viewer.username,
+                  user_pic: data.viewer.user_pic
+                }, 
+                viewed_at: data.viewer.viewed_at || data.viewed_at || data.viewedAt,
+                reaction: data.viewer.reaction
+              }] : undefined
+            };
+          }
+          return s;
+        });
+      });
+    };
+
+    const onStoryReaction = (data: { storyId: string; viewer: any }) => {
+      queryClient.setQueryData(queryKeys.userStories(userId), (old: Story[] | undefined) => {
+        if (!old) return old;
+        return old.map((s) => {
+          if (s._id === data.storyId) {
+            return {
+              ...s,
+              viewers: s.viewers?.map(v => 
+                (v.storyViewer._id || v.storyViewer).toString() === data.viewer.userId.toString()
+                  ? { ...v, reaction: data.viewer.reaction }
+                  : v
+              )
             };
           }
           return s;
@@ -71,12 +133,14 @@ export function useStories({ userId, initialIndex = 0 }: UseStoriesProps) {
       }
     };
 
-    socket.on("story_viewed", onStoryViewed);
+    socket.on("new_viewer", onNewViewer);
+    socket.on("story_reaction", onStoryReaction);
     socket.on("privacy_update", onPrivacyUpdate);
     socket.on("block_update", onBlockUpdate);
 
     return () => {
-      socket.off("story_viewed", onStoryViewed);
+      socket.off("new_viewer", onNewViewer);
+      socket.off("story_reaction", onStoryReaction);
       socket.off("privacy_update", onPrivacyUpdate);
       socket.off("block_update", onBlockUpdate);
     };
@@ -92,18 +156,21 @@ export function useStories({ userId, initialIndex = 0 }: UseStoriesProps) {
       return new Array(stories.length).fill(false);
     });
 
-    stories.forEach((story, idx) => {
+    stories.forEach((story: Story, idx: number) => {
       const loadMedia = () => new Promise<boolean>((resolve) => {
-        if (story.media_type === "image") {
+        if (story.media_type === "text") {
+          resolve(true);
+        } else if (story.media_type === "image") {
           const img = new Image();
-          img.src = story.media_url;
+          img.src = story.media_url || "";
           img.onload = () => resolve(true);
           img.onerror = () => resolve(false);
         } else {
-          const video = document.createElement("video");
-          video.src = story.media_url;
-          video.onloadeddata = () => resolve(true);
-          video.onerror = () => resolve(false);
+          // video or voice
+          const media = document.createElement(story.media_type === "voice" ? "audio" : "video");
+          media.src = story.media_url || "";
+          media.onloadeddata = () => resolve(true);
+          media.onerror = () => resolve(false);
         }
       });
 
@@ -117,6 +184,8 @@ export function useStories({ userId, initialIndex = 0 }: UseStoriesProps) {
     });
   }, [stories]);
 
+  const lastViewedId = useRef<string | null>(null);
+
   useEffect(() => {
     if (!stories.length || !readyStories[currentIndex]) return;
     if (isPaused) return;
@@ -124,7 +193,29 @@ export function useStories({ userId, initialIndex = 0 }: UseStoriesProps) {
     const currentStory = stories[currentIndex];
     if (!currentStory) return; // guard against undefined after deletion
 
-    API.newView(currentStory._id).catch(console.error);
+    // 1. Don't record view if it's my own story
+    const isMine = currentStory.mine || (currentUser && currentStory.storyOwner._id === (currentUser._id || currentUser.id));
+    if (isMine) return;
+
+    // 2. Don't record view if we already sent it for this specific story ID in this session
+    if (lastViewedId.current === currentStory._id) return;
+    
+    lastViewedId.current = currentStory._id;
+    API.newView(currentStory._id)
+      .then(() => {
+        // Invalidate feed and user stories so everything updates in real-time
+        queryClient.invalidateQueries({ queryKey: queryKeys.feed });
+        queryClient.invalidateQueries({ queryKey: queryKeys.userStories(userId) });
+      })
+      .catch((err) => {
+        // Story no longer exists — remove it from cache so user isn't stuck
+        if (err?.response?.status === 404) {
+          queryClient.setQueryData(queryKeys.userStories(userId), (old: Story[] | undefined) => {
+            if (!old) return old;
+            return old.filter((s) => s._id !== currentStory._id);
+          });
+        }
+      });
 
     // Initial setup for remaining time
     if (remainingTimeRef.current === 0) {
@@ -145,7 +236,7 @@ export function useStories({ userId, initialIndex = 0 }: UseStoriesProps) {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [currentIndex, stories, readyStories, isPaused]);
+  }, [currentIndex, stories, readyStories, isPaused, currentUser, userId, queryClient]);
 
   const pauseStory = () => {
     if (isPaused) return;

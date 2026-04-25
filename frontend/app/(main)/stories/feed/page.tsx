@@ -9,7 +9,7 @@ export default function StoriesPage() {
         <div className="w-24 h-24 rounded-full bg-card border border-border flex items-center justify-center shadow-[0_0_30px_var(--color-primary)] shadow-primary/20">
           <LayoutDashboard className="w-10 h-10 text-primary" />
         </div>
-        <h2 className="text-2xl font-bold text-white">Your Stories</h2>
+        <h2 className="text-2xl font-bold text-foreground">Your Stories</h2>
         <p className="text-muted-foreground text-sm">
           Select a story from the sidebar to start watching, or discover new people on the Explore page.
         </p>

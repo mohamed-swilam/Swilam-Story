@@ -14,7 +14,7 @@ const notificationSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ["follow", "story_view", "story_reply"],
+      enum: ["follow", "story_view", "story_reply", "story_reaction"],
       required: true,
     },
     read: {
@@ -30,6 +30,9 @@ const notificationSchema = new mongoose.Schema(
       ref: "Conversation",
     },
     messagePreview: {
+      type: String,
+    },
+    reaction: {
       type: String,
     },
   },

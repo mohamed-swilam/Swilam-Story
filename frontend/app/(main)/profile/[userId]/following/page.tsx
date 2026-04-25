@@ -77,6 +77,11 @@ export default function FollowingPage() {
       const data = await API.followUser(targetId);
       newFollowing[index].isFollowing = data.following;
       setFollowing([...newFollowing]);
+      
+      // Invalidate queries to reflect changes in feed and profile
+      queryClient.invalidateQueries({ queryKey: queryKeys.feed });
+      queryClient.invalidateQueries({ queryKey: queryKeys.profile(targetId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.following(userId) });
     } catch (err) {
       console.error(err);
       // Revert

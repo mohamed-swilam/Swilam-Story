@@ -18,6 +18,7 @@ export default function UserStoriesPage() {
   const searchParams = useSearchParams();
   const initialIndex = parseInt(searchParams.get("index") || "0");
   const source = searchParams.get("source");
+  const storyId = searchParams.get("storyId") || undefined;
   const [currentUser, setCurrentUser] = useState<any>(null);
 
   useEffect(() => {
@@ -33,7 +34,7 @@ export default function UserStoriesPage() {
   const [isReplying, setIsReplying] = useState(false);
   const queryClient = useQueryClient();
   const { stories, readyStories, currentIndex, setCurrentIndex, nextStory, prevStory, isPaused, pauseStory, resumeStory, cancelTimer, loading } =
-    useStories({ userId: userIdStr, initialIndex });
+    useStories({ userId: userIdStr, initialIndex, storyId });
 
   function formatDate(dateString: string) {
     const date = new Date(dateString);
@@ -84,9 +85,15 @@ export default function UserStoriesPage() {
       // Hard cancel timer before mutating state
       cancelTimer();
 
-      if (stories.length === 1) {
-        router.back();
+      if (stories.length <= 1) {
+        handleExit();
         return;
+      }
+
+      // If we are deleting the last story in a sequence, move to the previous one first
+      const isLastInSequence = currentIndex === stories.length - 1;
+      if (isLastInSequence) {
+        setCurrentIndex(currentIndex - 1);
       }
 
       // Update state in React Query cache
@@ -94,12 +101,6 @@ export default function UserStoriesPage() {
         if (!old) return old;
         return old.filter((s) => s._id !== deletedStoryId);
       });
-
-      // Adjust index if it's now out of bounds
-      const nextLength = stories.length - 1;
-      if (currentIndex >= nextLength) {
-        setCurrentIndex(nextLength - 1 >= 0 ? nextLength - 1 : 0);
-      }
     } catch (err) {
       console.error("Failed to delete story:", err);
       throw err;
@@ -107,12 +108,22 @@ export default function UserStoriesPage() {
   };
 
   const handleExit = () => {
+    // Invalidate feed immediately so it reflects "viewed" status
+    queryClient.invalidateQueries({ queryKey: queryKeys.feed });
+    
     if (source === "feed") {
       router.push("/stories/feed");
     } else {
       router.back();
     }
   };
+
+  // Also invalidate on unmount to be safe
+  useEffect(() => {
+    return () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.feed });
+    };
+  }, [queryClient]);
 
   // Prevent flicker: if loading and no data, show black screen. 
   // If not loading and no data, show "No stories".
@@ -141,31 +152,47 @@ export default function UserStoriesPage() {
   return (
     <div
       {...handlers}
-      className="w-full h-full bg-black flex flex-col items-center justify-center relative overflow-hidden select-none"
+      className="w-full h-full bg-[#050505] flex items-center justify-center relative overflow-hidden select-none p-0 md:p-4"
       onMouseDown={handlePressStart}
       onTouchStart={handlePressStart}
       onMouseUp={handlePressEnd}
       onMouseLeave={handlePressEnd}
       onTouchEnd={handlePressEnd}
     >
-      <StoryMedia
-        story={stories[currentIndex]}
-        currentUserId={currentUser?.id}
-        openViewers={() => {
-          pauseStory();
-          setShowViewers(true);
-        }}
-        formatDate={formatDate}
-        stories={stories}
-        currentIndex={currentIndex}
-        readyStories={readyStories}
-        isPaused={isPaused}
-        pauseStory={pauseStory}
-        resumeStory={resumeStory}
-        onDeleteConfirmed={handleDeleteConfirmed}
-        onClose={handleExit}
-        setIsReplying={setIsReplying}
-      />
+      {/* Constrained Story Container */}
+      <div className="relative w-full h-full md:h-[92vh] md:max-h-[850px] md:w-auto md:aspect-[9/16] shadow-2xl overflow-hidden md:rounded-3xl bg-black">
+        <StoryMedia
+          key={stories[currentIndex]._id}
+          story={stories[currentIndex]}
+          currentUserId={currentUser?.id}
+          openViewers={() => {
+            pauseStory();
+            setShowViewers(true);
+          }}
+          formatDate={formatDate}
+          stories={stories}
+          currentIndex={currentIndex}
+          readyStories={readyStories}
+          isPaused={isPaused}
+          pauseStory={pauseStory}
+          resumeStory={resumeStory}
+          onDeleteConfirmed={handleDeleteConfirmed}
+          onClose={handleExit}
+          setIsReplying={setIsReplying}
+        />
+
+        {showViewers && (
+          <ViewersModal
+            currentStoryId={stories[currentIndex]._id}
+            initialViewers={stories[currentIndex].viewers}
+            closeViewers={() => {
+              setShowViewers(false);
+              resumeStory();
+            }}
+            formatDate={formatDate}
+          />
+        )}
+      </div>
 
       {/* Left Arrow */}
       {currentIndex > 0 && (
@@ -191,28 +218,6 @@ export default function UserStoriesPage() {
         >
           <ChevronRight size={20} />
         </button>
-      )}
-
-      {/* Pause/Play Toggle Button */}
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          isPaused ? resumeStory() : pauseStory();
-        }}
-        className="absolute top-12 right-20 w-9 h-9 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white hover:bg-white/30 transition-colors z-30"
-      >
-        {isPaused ? <Play size={18} className="ml-0.5" /> : <Pause size={18} />}
-      </button>
-
-      {showViewers && (
-        <ViewersModal
-          story={stories[currentIndex]}
-          closeViewers={() => {
-            setShowViewers(false);
-            resumeStory();
-          }}
-          formatDate={formatDate}
-        />
       )}
     </div>
   );

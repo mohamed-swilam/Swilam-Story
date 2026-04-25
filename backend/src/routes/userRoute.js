@@ -12,6 +12,7 @@ const {
   getAllUsers,
   updateProfile,
   updateSettings,
+  updateChatSettings,
   blockUser,
   unblockUser,
   getBlockedUsers,
@@ -29,6 +30,7 @@ router.route("/online-status").get(auth.verifyToken, getOnlineStatus);
 router.route("/explore").get(auth.verifyToken, getAllUsers);
 router.route("/update-profile").patch(auth.verifyToken, uploadUser.single("user_pic"), updateProfile);
 router.route("/update-settings").patch(auth.verifyToken, updateSettings);
+router.route("/update-chat-settings").patch(auth.verifyToken, uploadUser.single("chatWallpaper"), updateChatSettings);
 router.route("/blocked").get(auth.verifyToken, getBlockedUsers);
 router.route("/block/:targetUserId").post(auth.verifyToken, blockUser);
 router.route("/unblock/:targetUserId").post(auth.verifyToken, unblockUser);

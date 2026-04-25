@@ -48,7 +48,7 @@ const register = async (req, res, next) => {
       throw new AppError("Please select file...", 401);
     }
     const uploadResult = await uploadToCloudinary(req.file.buffer, {
-      folder: "stories",
+      folder: "users",
       resource_type: "image",
     });
     const newUser = new User({
@@ -96,10 +96,11 @@ const authtest = async (req, res, next) => {
         followers: user.followers || [],
         following: user.following || [],
         isPrivate: user.isPrivate,
-        lastSeenVisibility: user.lastSeenVisibility,
+        lastSeenVisibility: user.lastSeenVisibility || "everyone",
         readReceipts: user.readReceipts,
         blockedUsers: user.blockedUsers,
         settings: user.settings,
+        chatSettings: user.chatSettings || [],
         notificationSettings: user.notificationSettings || { messages: true, follows: true, storyViews: true },
       },
     });
@@ -110,18 +111,34 @@ const authtest = async (req, res, next) => {
 
 const getOnlineStatus = async (req, res, next) => {
   try {
+    const currentUserId = req.user.id;
     const { ids } = req.query;
     if (!ids) {
       return res.json({});
     }
 
     const userIds = ids.split(",").filter(Boolean);
+    const users = await User.find({ _id: { $in: userIds } }).select("lastSeenVisibility followers").lean();
     const statusMap = {};
 
     await Promise.all(
-      userIds.map(async (userId) => {
-        const online = await redis.get(`user:${userId}:online`);
-        statusMap[userId] = online === "1";
+      users.map(async (user) => {
+        const userId = user._id.toString();
+        const visibility = user.lastSeenVisibility || "everyone"; // Default to everyone if missing
+
+        let canSee = false;
+        if (visibility === "everyone") {
+          canSee = true;
+        } else if (visibility === "followers") {
+          canSee = user.followers?.some(id => id.toString() === currentUserId);
+        }
+
+        if (canSee) {
+          const online = await redis.get(`user:${userId}:online`);
+          statusMap[userId] = online === "1";
+        } else {
+          statusMap[userId] = false;
+        }
       })
     );
 
@@ -250,12 +267,22 @@ const getFollowing = async (req, res, next) => {
 const getAllUsers = async (req, res, next) => {
   try {
     const currentUserId = req.user.id;
-    const page = parseInt(req.query.page) || 1;
+    const { page = 1, search } = req.query;
     const limit = 20;
+    const skip = (parseInt(page) - 1) * limit;
 
-    const users = await User.find({ _id: { $ne: currentUserId } })
+    const query = { _id: { $ne: currentUserId } };
+    
+    // Explicitly handle search to ensure it's a non-empty string
+    const searchStr = (Array.isArray(search) ? search[0] : search)?.toString().trim();
+    
+    if (searchStr && searchStr !== "" && searchStr !== "undefined") {
+      query.username = { $regex: new RegExp(searchStr, "i") };
+    }
+
+    const users = await User.find(query)
       .select("username user_pic followers")
-      .skip((page - 1) * limit)
+      .skip(skip)
       .limit(limit)
       .lean();
 
@@ -286,7 +313,7 @@ const updateProfile = async (req, res, next) => {
 
     if (req.file) {
       const uploadResult = await uploadToCloudinary(req.file.buffer, {
-        folder: "profiles",
+        folder: "users",
         resource_type: "image",
       });
       updateData.user_pic = uploadResult.secure_url;
@@ -294,6 +321,17 @@ const updateProfile = async (req, res, next) => {
 
     const updatedUser = await User.findByIdAndUpdate(userId, updateData, { new: true }).select("-password");
     
+    // Notify all connected clients about the profile update
+    const io = req.app.get("io");
+    if (io) {
+      io.emit("profile_update", {
+        userId: updatedUser._id,
+        username: updatedUser.username,
+        user_pic: updatedUser.user_pic,
+        bio: updatedUser.bio
+      });
+    }
+
     // Create new token with updated data
     const token = jwt.sign(
       {
@@ -388,6 +426,53 @@ const getBlockedUsers = async (req, res, next) => {
   }
 };
 
+const updateChatSettings = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const { conversationId, accentColor, fontSize, reset } = req.body;
+    let { chatWallpaper } = req.body;
+
+    const user = await User.findById(userId);
+    if (!user) throw new AppError("User not found", 404);
+
+    if (req.file) {
+      const uploadResult = await uploadToCloudinary(req.file.buffer, {
+        folder: "wallpapers",
+        resource_type: "image",
+      });
+      chatWallpaper = uploadResult.secure_url;
+    }
+
+    if (!user.chatSettings) user.chatSettings = [];
+
+    if (reset) {
+      user.chatSettings = user.chatSettings.filter(
+        (s) => s.conversationId?.toString() !== conversationId
+      );
+    } else {
+      const index = user.chatSettings.findIndex(
+        (s) => s.conversationId?.toString() === conversationId
+      );
+
+      const settingsData = { conversationId };
+      if (accentColor !== undefined) settingsData.accentColor = accentColor;
+      if (fontSize !== undefined) settingsData.fontSize = fontSize;
+      if (chatWallpaper !== undefined) settingsData.chatWallpaper = chatWallpaper;
+
+      if (index > -1) {
+        user.chatSettings[index] = { ...user.chatSettings[index], ...settingsData };
+      } else {
+        user.chatSettings.push(settingsData);
+      }
+    }
+
+    await user.save();
+    res.json({ success: true, chatSettings: user.chatSettings });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   login,
   register,
@@ -401,6 +486,7 @@ module.exports = {
   getAllUsers,
   updateProfile,
   updateSettings,
+  updateChatSettings,
   blockUser,
   unblockUser,
   getBlockedUsers,

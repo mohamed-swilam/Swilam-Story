@@ -33,10 +33,14 @@ const getNotifications = async (req, res, next) => {
 const markAllRead = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    await Notification.updateMany(
-      { recipient: userId, read: false },
-      { read: true }
-    );
+    const { types } = req.body || {};
+    
+    const query = { recipient: userId, read: false };
+    if (types && Array.isArray(types)) {
+      query.type = { $in: types };
+    }
+
+    await Notification.updateMany(query, { read: true });
     res.json({ success: true });
   } catch (err) {
     next(err);

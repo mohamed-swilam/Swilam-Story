@@ -45,10 +45,20 @@ const userSchema = mongoose.Schema({
   following: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
   followers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
   notificationSettings: {
-    messages:    { type: Boolean, default: true },
-    follows:     { type: Boolean, default: true },
-    storyViews:  { type: Boolean, default: true },
+    messages:       { type: Boolean, default: true },
+    follows:        { type: Boolean, default: true },
+    storyViews:     { type: Boolean, default: true },
+    storyReplies:   { type: Boolean, default: true },
+    storyReactions: { type: Boolean, default: true },
   },
+  chatSettings: [
+    {
+      conversationId: { type: mongoose.Schema.Types.ObjectId, ref: "Conversation" },
+      accentColor: String,
+      fontSize: String,
+      chatWallpaper: String,
+    }
+  ],
 });
 
 module.exports = mongoose.model("User", userSchema, "users");

@@ -19,7 +19,7 @@ const messageSchema = mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ["text", "image", "file", "voice"],
+      enum: ["text", "image", "video", "file", "voice"],
       default: "text",
     },
     fileUrl: {
@@ -34,11 +34,19 @@ const messageSchema = mongoose.Schema(
       type: Number,
       default: 0,
     },
+    voiceMessage: {
+      url: { type: String },
+      duration: { type: Number },
+      publicId: { type: String },
+      waveformData: { type: [Number], default: [] },
+    },
     storyReply: {
       storyId: { type: mongoose.Schema.Types.ObjectId, ref: "Story" },
       mediaUrl: { type: String },
-      mediaType: { type: String, enum: ["image", "video"] },
+      mediaType: { type: String, enum: ["image", "video", "text", "voice"] },
       storyOwnerId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+      content: { type: String },
+      bg_color: { type: String },
     },
     readBy: [
       {
@@ -59,9 +67,13 @@ const messageSchema = mongoose.Schema(
       },
     ],
     replyTo: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Message",
-      default: null,
+      messageId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Message",
+        default: null,
+      },
+      content: { type: String, default: "" },
+      senderUsername: { type: String, default: "" },
     },
   },
   { timestamps: true }

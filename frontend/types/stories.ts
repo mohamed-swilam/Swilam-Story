@@ -13,15 +13,19 @@ export interface Viewer {
 export interface Viewers {
   storyViewer: Viewer;
   viewed_at: string;
+  reaction?: string | null;
 }
 
 export interface Story {
   _id: string;
   storyOwner: Owner;
-  media_url: string;
-  media_type: "image" | "video";
+  media_url?: string;
+  media_type: "image" | "video" | "text" | "voice";
   duration: number;
-  public_id: string;
+  public_id?: string;
+  content?: string;
+  bg_color?: string;
+  waveformData?: number[];
   viewers: Viewers[];
   isViewed: boolean;
   createdAt: string;

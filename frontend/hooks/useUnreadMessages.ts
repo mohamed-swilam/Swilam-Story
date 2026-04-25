@@ -28,20 +28,88 @@ export function useUnreadMessages() {
     if (!socket || !currentUserId) return;
 
     const onMessageReceived = (message: any) => {
-      // Only increment if the message was sent by someone else
+      // 1. Update unread count if needed
       const senderId = message.sender?._id || message.sender;
-      if (senderId === currentUserId) return;
-
-      // If we are currently in this conversation, it gets read immediately
+      const isMine = senderId === currentUserId;
+      
       const isCurrentConversation = pathname === `/messages/${message.conversationId}`;
-      if (!isCurrentConversation) {
+      if (!isCurrentConversation && !isMine) {
         queryClient.setQueryData(queryKeys.unreadCount, (old: number | undefined) => (old || 0) + 1);
       }
+
+      // 2. Globally update Chat Sidebar cache
+      queryClient.setQueryData(queryKeys.chats, (old: any[] | undefined) => {
+        if (!old) return old;
+        const index = old.findIndex((c) => c._id.toString() === message.conversationId.toString());
+        
+        if (index !== -1) {
+          const updatedConversations = [...old];
+          const conv = { ...updatedConversations[index] };
+          
+          if (conv.lastMessage?._id === message._id) return old;
+
+          conv.lastMessage = message;
+          conv.updatedAt = message.createdAt;
+          
+          if (!isCurrentConversation && !isMine) {
+            conv.unreadCount = (conv.unreadCount || 0) + 1;
+          }
+          
+          updatedConversations.splice(index, 1);
+          updatedConversations.unshift(conv);
+          return updatedConversations;
+        } else {
+          // If conversation not in list, refetch the whole list
+          queryClient.invalidateQueries({ queryKey: queryKeys.chats });
+          return old;
+        }
+      });
+
+      // 3. Globally update Message Window cache
+      queryClient.setQueryData(queryKeys.messages(message.conversationId), (old: any) => {
+        if (!old) return old;
+        
+        const exists = old.pages.some((page: any) => 
+          page.messages.some((m: any) => m._id === message._id)
+        );
+        if (exists) return old;
+
+        const newPages = [...old.pages];
+        newPages[0] = {
+          ...newPages[0],
+          messages: [message, ...newPages[0].messages],
+        };
+        return { ...old, pages: newPages };
+      });
     };
 
-    const onMessagesRead = (data: any) => {
-      // If messages were read, the most reliable way is to refetch
+    const onMessagesRead = ({ conversationId, readBy }: { conversationId: string; readBy: string }) => {
+      // Update unread count
       queryClient.invalidateQueries({ queryKey: queryKeys.unreadCount });
+
+      // Update sidebar cache for read status
+      queryClient.setQueryData(queryKeys.chats, (old: any[] | undefined) => {
+        if (!old) return old;
+        return old.map((c) => {
+          if (c._id.toString() === conversationId.toString()) {
+            const updatedConv = { ...c };
+            if (readBy.toString() === currentUserId?.toString()) {
+              updatedConv.unreadCount = 0;
+            }
+            if (updatedConv.lastMessage) {
+              const alreadyRead = updatedConv.lastMessage.readBy?.some((id: any) => id.toString() === readBy.toString());
+              if (!alreadyRead) {
+                updatedConv.lastMessage = {
+                  ...updatedConv.lastMessage,
+                  readBy: [...(updatedConv.lastMessage.readBy || []), readBy]
+                };
+              }
+            }
+            return updatedConv;
+          }
+          return c;
+        });
+      });
     };
 
     socket.on("message_received", onMessageReceived);

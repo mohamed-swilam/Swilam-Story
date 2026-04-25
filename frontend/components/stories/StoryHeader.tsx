@@ -1,5 +1,6 @@
 "use client";
 import { useRouter } from "next/navigation";
+import { Pause, Play, X } from "lucide-react";
 
 interface StoryHeaderProps {
   story: Story;
@@ -7,11 +8,12 @@ interface StoryHeaderProps {
   formatDate: (date: string) => string;
   pauseStory: () => void;
   resumeStory: () => void;
+  isPaused: boolean;
   onDeleteConfirmed: () => Promise<void>;
   onClose: () => void;
 }
 import { Story } from "@/types/stories";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import ConfirmModal from "@/components/modals/ConfirmModal";
 
 export default function StoryHeader({ 
@@ -20,6 +22,7 @@ export default function StoryHeader({
   formatDate,
   pauseStory,
   resumeStory,
+  isPaused,
   onDeleteConfirmed,
   onClose
 }: StoryHeaderProps) {
@@ -27,6 +30,14 @@ export default function StoryHeader({
   const [error, setError] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [_, forceUpdate] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      forceUpdate(v => v + 1);
+    }, 10000); // Live update every 10s
+    return () => clearInterval(timer);
+  }, []);
 
   const isMine = story.mine || (currentUserId && story.storyOwner._id === currentUserId);
 
@@ -60,7 +71,7 @@ export default function StoryHeader({
         <div className="flex gap-3 items-center">
           <button 
             onClick={() => router.push(`/profile/${story.storyOwner._id}`)}
-            className="flex gap-3 items-center group"
+            className="flex gap-3 items-center group transition-transform hover:scale-105 active:scale-95"
           >
             <img
               src={story.storyOwner.user_pic || "/user_profile.jpg"}
@@ -81,7 +92,7 @@ export default function StoryHeader({
             <button
               onClick={handleDeleteClick}
               disabled={loading}
-              className={`p-2 rounded-full text-white bg-red-500/10 hover:bg-red-500/40 transition-all ${
+              className={`p-2 rounded-full text-white bg-red-500/10 hover:bg-red-500/40 transition-all hover:scale-110 active:scale-90 ${
                 loading ? "opacity-50 cursor-not-allowed" : ""
               }`}
               title="Delete Story"
@@ -93,14 +104,24 @@ export default function StoryHeader({
           )}
         </div>
 
-        <button
-          onClick={onClose}
-          className="p-2 text-white/70 hover:text-white transition-colors hover:bg-white/10 rounded-full"
-        >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              isPaused ? resumeStory() : pauseStory();
+            }}
+            className="p-2 text-white/70 hover:text-white transition-all hover:bg-white/10 rounded-full flex items-center justify-center hover:scale-110 active:scale-90"
+          >
+            {isPaused ? <Play size={20} fill="currentColor" /> : <Pause size={20} fill="currentColor" />}
+          </button>
+
+          <button
+            onClick={onClose}
+            className="p-2 text-white/70 hover:text-white transition-all hover:bg-white/10 rounded-full hover:scale-110 active:scale-90"
+          >
+            <X size={24} />
+          </button>
+        </div>
       </div>
 
       <ConfirmModal

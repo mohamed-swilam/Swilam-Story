@@ -1,4 +1,4 @@
-export type NotificationType = "follow" | "story_view" | "story_reply";
+export type NotificationType = "follow" | "story_view" | "story_reply" | "story_reaction";
 
 export interface Notification {
   _id: string;
@@ -8,6 +8,7 @@ export interface Notification {
   storyId?: string;
   conversationId?: string;
   messagePreview?: string;
+  reaction?: string;
   createdAt: string;
 }
 

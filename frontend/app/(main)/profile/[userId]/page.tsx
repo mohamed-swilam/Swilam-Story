@@ -57,7 +57,17 @@ export default function ProfilePage() {
       }
     },
     onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.explore });
+      queryClient.invalidateQueries({ queryKey: queryKeys.feed });
+      queryClient.invalidateQueries({ queryKey: ["explore-stories"] });
       queryClient.invalidateQueries({ queryKey: queryKeys.profile(userId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.followers(userId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.following(userId) });
+      
+      // Also invalidate current user's following list
+      if (currentUser?.id || currentUser?._id) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.following(currentUser.id || currentUser._id) });
+      }
     },
   });
 
@@ -92,12 +102,28 @@ export default function ProfilePage() {
       }
     };
 
+    const onNewStory = (data: { storyOwner: string }) => {
+      if (data.storyOwner === userId) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.userStories(userId) });
+      }
+    };
+
+    const onStoryDeleted = (data: { storyOwner: string }) => {
+      if (data.storyOwner === userId) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.userStories(userId) });
+      }
+    };
+
     socket.on("privacy_update", onPrivacyUpdate);
     socket.on("block_update", onBlockUpdate);
+    socket.on("new_story", onNewStory);
+    socket.on("story_deleted", onStoryDeleted);
     
     return () => {
       socket.off("privacy_update", onPrivacyUpdate);
       socket.off("block_update", onBlockUpdate);
+      socket.off("new_story", onNewStory);
+      socket.off("story_deleted", onStoryDeleted);
     };
   }, [socket, userId, queryClient]);
 

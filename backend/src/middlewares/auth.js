@@ -1,4 +1,5 @@
 const verifyJWT = require("../utils/verifyJWT");
+const AppError = require("../utils/appError");
 
 const verifyToken = async (req, res, next) => {
   try {

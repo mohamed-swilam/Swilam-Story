@@ -4,6 +4,8 @@ export interface Participant {
   user_pic: string;
   isPrivate?: boolean;
   followsMe?: boolean;
+  isBlocked?: boolean;
+  amIBlocked?: boolean;
 }
 
 export interface LastMessage {
@@ -45,16 +47,33 @@ export interface Message {
   conversationId: string;
   sender: MessageSender;
   content: string;
-  type: "text" | "image" | "file" | "voice";
+  type: "text" | "image" | "video" | "file" | "voice";
   fileUrl?: string;
   fileName?: string;
   fileSize?: number;
+  voiceMessage?: {
+    url: string;
+    duration: number;
+    publicId: string;
+    waveformData: number[];
+  };
   storyReply?: {
     storyId: string;
-    mediaUrl: string;
-    mediaType: "image" | "video";
+    mediaUrl?: string;
+    mediaType: "image" | "video" | "text" | "voice";
     storyOwnerId: string;
+    content?: string;
+    bg_color?: string;
   };
+  replyTo?: {
+    messageId: string;
+    content: string;
+    senderUsername: string;
+  };
+  reactions?: {
+    userId: string;
+    emoji: string;
+  }[];
   readBy: string[];
   createdAt: string;
   updatedAt: string;

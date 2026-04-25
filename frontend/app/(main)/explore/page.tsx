@@ -2,35 +2,56 @@
 import { useRouter } from "next/navigation";
 import { API } from "@/lib/api";
 import { UserProfile } from "@/types/follow";
-import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Story } from "@/types/stories";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
+import { useState, useEffect } from "react";
+import { Search, MessageCircle, UserPlus, UserCheck, Play } from "lucide-react";
 
 export default function ExplorePage() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
+  // Debounce logic
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // 1. Fetch Explore Stories (Discovery Grid) - only when not searching
+  const { data: exploreStories, isLoading: loadingStories } = useQuery({
+    queryKey: ["explore-stories"],
+    queryFn: () => API.getExploreStories(),
+    enabled: !debouncedSearch,
+  });
+
+  // 2. Fetch Users (Search results or suggested)
   const {
-    data,
+    data: userData,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-    isLoading: loading,
+    isLoading: loadingUsers,
   } = useInfiniteQuery({
-    queryKey: queryKeys.explore,
-    queryFn: ({ pageParam = 1 }) => API.getExploreUsers(pageParam as number),
+    queryKey: [queryKeys.explore, debouncedSearch],
+    queryFn: ({ pageParam = 1 }) => API.getExploreUsers(pageParam as number, debouncedSearch),
     initialPageParam: 1,
     getNextPageParam: (lastPage, allPages) => lastPage.length < 20 ? undefined : allPages.length + 1,
   });
 
-  const users = data?.pages.flat() || [];
+  const users = userData?.pages.flat() || [];
 
   const followMutation = useMutation({
     mutationFn: (userId: string) => API.followUser(userId),
     onMutate: async (userId) => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.explore });
-      const previousData = queryClient.getQueryData(queryKeys.explore);
+      await queryClient.cancelQueries({ queryKey: [queryKeys.explore, debouncedSearch] });
+      const previousData = queryClient.getQueryData([queryKeys.explore, debouncedSearch]);
 
-      queryClient.setQueryData(queryKeys.explore, (old: any) => {
+      queryClient.setQueryData([queryKeys.explore, debouncedSearch], (old: any) => {
         if (!old) return old;
         return {
           ...old,
@@ -53,11 +74,21 @@ export default function ExplorePage() {
     },
     onError: (err, userId, context) => {
       if (context?.previousData) {
-        queryClient.setQueryData(queryKeys.explore, context.previousData);
+        queryClient.setQueryData([queryKeys.explore, debouncedSearch], context.previousData);
       }
     },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.explore });
+    onSettled: (_, __, userId) => {
+      queryClient.invalidateQueries({ queryKey: [queryKeys.explore] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.feed });
+      queryClient.invalidateQueries({ queryKey: ["explore-stories"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.profile(userId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.followers(userId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.following(userId) });
+      // Also invalidate current user's following list
+      const currentUser = queryClient.getQueryData(queryKeys.user) as any;
+      if (currentUser?.id || currentUser?._id) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.following(currentUser.id || currentUser._id) });
+      }
     },
   });
 
@@ -67,93 +98,181 @@ export default function ExplorePage() {
   };
 
   return (
-      <main className="min-h-full max-w-2xl mx-auto p-6">
-        <header className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Explore</h1>
-          <p className="text-muted-foreground">Find people to follow and discover new stories.</p>
-        </header>
+    <main className="min-h-screen max-w-4xl mx-auto p-4 md:p-8 page-transition">
+      <header className="mb-8 space-y-2">
+        <h1 className="text-4xl font-black tracking-tight text-foreground">Explore</h1>
+        <p className="text-muted-foreground text-lg">Discover new stories and connect with people.</p>
+      </header>
 
-        <div className="relative mb-8">
-          <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-            <svg className="w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-          </div>
-          <input 
-            type="text" 
-            placeholder="Search for users..." 
-            className="w-full bg-card border border-border rounded-2xl py-4 pl-12 pr-4 text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-sm"
-          />
+      {/* ── Search Bar ── */}
+      <div className="relative mb-10 group">
+        <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none transition-transform group-focus-within:scale-110">
+          <Search className="w-5 h-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
         </div>
+        <input 
+          type="text" 
+          placeholder="Search usernames..." 
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full bg-card border border-border rounded-3xl py-5 pl-14 pr-6 text-foreground text-lg placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all shadow-2xl"
+        />
+        {searchTerm && (
+          <button 
+            onClick={() => setSearchTerm("")}
+            className="absolute inset-y-0 right-5 flex items-center text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Clear
+          </button>
+        )}
+      </div>
 
-        <div className="space-y-4">
-          {loading ? (
-            <div className="flex justify-center py-10">
-              <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin shadow-[0_0_10px_var(--color-primary)]" />
+      <div className="space-y-8">
+        {/* ── MODE 1: DISCOVERY GRID (No active search) ── */}
+        {!debouncedSearch && (
+          <section className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
+                <span className="w-2 h-8 bg-primary rounded-full" />
+                Featured Stories
+              </h2>
             </div>
-          ) : users.length === 0 ? (
-            <div className="text-center py-20 text-muted-foreground bg-card rounded-2xl border border-border">No users found. Try adjusting your search.</div>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {users.map((user) => (
-                <div key={user._id} className="flex items-center justify-between bg-card hover:bg-card/80 transition-colors p-4 rounded-2xl border border-border">
-                  <button 
-                    onClick={() => router.push(`/profile/${user._id}`)}
-                    className="flex items-center gap-4 flex-1 text-left"
+
+            {loadingStories ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 animate-pulse">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <div key={i} className="aspect-[9/16] bg-card rounded-2xl border border-border" />
+                ))}
+              </div>
+            ) : exploreStories?.length === 0 ? (
+              <div className="text-center py-20 bg-card rounded-3xl border border-border text-muted-foreground">
+                No public stories right now. Try searching for users!
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {exploreStories?.map((story: Story, index: number) => (
+                  <div 
+                    key={story._id}
+                    onClick={() => router.push(`/stories/${story.storyOwner._id}?index=0`)}
+                    className={`group relative aspect-[9/16] bg-card rounded-2xl overflow-hidden cursor-pointer border border-border hover:border-primary/50 transition-all hover:shadow-[0_0_30px_rgba(var(--primary-rgb),0.2)] stagger-item stagger-delay-${Math.min(index + 1, 5)}`}
                   >
-                    <img 
-                      src={user.user_pic || "/user_profile.jpg"} 
-                      alt="" 
-                      className="w-12 h-12 rounded-full object-cover border-2 border-border shadow-sm"
-                    />
-                    <div>
-                      <p className="font-semibold text-white">{user.username}</p>
-                      <p className="text-sm text-muted-foreground">{user.followersCount} followers</p>
+                    {story.media_type === "video" ? (
+                      <video src={story.media_url} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                    ) : (
+                      <img src={story.media_url} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" alt="" />
+                    )}
+                    
+                    {/* Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60 group-hover:opacity-40 transition-opacity" />
+                    
+                    {/* Owner Info */}
+                    <div className="absolute bottom-3 left-3 right-3 flex items-center gap-2">
+                      <img src={story.storyOwner.user_pic || "/user_profile.jpg"} className="w-6 h-6 rounded-full border border-border" alt="" />
+                      <span className="text-xs font-bold text-white truncate drop-shadow-md">{story.storyOwner.username}</span>
                     </div>
-                  </button>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={async () => {
-                        try {
-                          const conv = await API.createOrGetConversation(user._id);
-                          queryClient.invalidateQueries({ queryKey: queryKeys.chats });
-                          router.push(`/messages/${conv._id}`);
-                        } catch (err) {
-                          console.error(err);
-                        }
-                      }}
-                      className="p-2 bg-white/5 text-white hover:bg-white/10 rounded-xl border border-white/10 transition-all"
-                      title="Send Message"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                      </svg>
-                    </button>
-                    <button
-                      onClick={() => handleFollowToggle(user._id)}
-                      disabled={followMutation.isPending}
-                      className={`px-5 py-2 text-sm font-semibold rounded-xl transition-all duration-300 ${
-                        user.isFollowing 
-                          ? "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-                          : "bg-primary text-white shadow-[0_0_15px_var(--color-primary)] shadow-primary/30 hover:shadow-primary/50"
-                      }`}
-                    >
-                      {user.isFollowing ? "Following" : "Follow"}
-                    </button>
+
+                    {story.media_type === "video" && (
+                      <div className="absolute top-3 right-3 p-1 bg-black/20 backdrop-blur-md rounded-lg">
+                        <Play size={12} className="text-white fill-white" />
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
-              
-              {hasNextPage && (
-                <button 
-                  onClick={() => fetchNextPage()}
-                  disabled={isFetchingNextPage}
-                  className="mt-6 w-full py-4 bg-card rounded-2xl font-bold text-muted-foreground hover:text-white hover:bg-card/80 transition-colors border border-border disabled:opacity-50"
-                >
-                  {isFetchingNextPage ? "Loading..." : "Load More"}
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-      </main>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* ── MODE 2: SEARCH RESULTS (Active search) ── */}
+        {debouncedSearch && (
+          <section className="space-y-4">
+            <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
+              <span className="w-2 h-8 bg-secondary rounded-full" />
+              Search Results
+            </h2>
+
+            {loadingUsers ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-24 bg-card rounded-2xl border border-border animate-pulse" />
+                ))}
+              </div>
+            ) : users.length === 0 ? (
+              <div className="text-center py-20 bg-card rounded-3xl border border-border text-muted-foreground">
+                No users found for &quot;{debouncedSearch}&quot;
+              </div>
+            ) : (
+              <div className="grid gap-3">
+                {users.map((user, index) => (
+                  <div key={user._id} className={`flex items-center justify-between bg-card hover:bg-muted/50 transition-all p-4 rounded-3xl border border-border group stagger-item stagger-delay-${Math.min(index + 1, 5)}`}>
+                    <button 
+                      onClick={() => router.push(`/profile/${user._id}`)}
+                      className="flex items-center gap-5 flex-1 text-left"
+                    >
+                      <div className="relative">
+                        <img 
+                          src={user.user_pic || "/user_profile.jpg"} 
+                          alt="" 
+                          className="w-14 h-14 rounded-full object-cover border-2 border-primary/20 group-hover:border-primary transition-all"
+                        />
+                        <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-card rounded-full" />
+                      </div>
+                      <div>
+                        <p className="font-bold text-foreground text-lg">{user.username}</p>
+                        <p className="text-sm text-muted-foreground font-medium">{user.followersCount} followers</p>
+                      </div>
+                    </button>
+
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          try {
+                            const conv = await API.createOrGetConversation(user._id);
+                            queryClient.invalidateQueries({ queryKey: queryKeys.chats });
+                            router.push(`/messages/${conv._id}`);
+                          } catch (err) {
+                            console.error(err);
+                          }
+                        }}
+                        className="p-3 bg-foreground/10 text-foreground hover:bg-primary hover:text-primary-foreground rounded-2xl border border-border transition-all shadow-xl"
+                        title="Send Message"
+                      >
+                        <MessageCircle size={20} />
+                      </button>
+                      
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleFollowToggle(user._id);
+                        }}
+                        disabled={followMutation.isPending}
+                        className={`flex items-center gap-2 px-6 py-3 text-sm font-bold rounded-2xl transition-all duration-300 ${
+                          user.isFollowing 
+                            ? "bg-foreground/10 text-foreground hover:bg-foreground/20"
+                            : "bg-primary text-primary-foreground shadow-lg shadow-primary/30 hover:scale-105 active:scale-95"
+                        }`}
+                      >
+                        {user.isFollowing ? <UserCheck size={18} /> : <UserPlus size={18} />}
+                        <span className="hidden sm:inline">{user.isFollowing ? "Following" : "Follow"}</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+
+                {hasNextPage && (
+                  <button 
+                    onClick={() => fetchNextPage()}
+                    disabled={isFetchingNextPage}
+                    className="mt-6 w-full py-4 bg-card rounded-2xl font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition-all border border-border disabled:opacity-50"
+                  >
+                    {isFetchingNextPage ? "Loading..." : "Load More"}
+                  </button>
+                )}
+              </div>
+            )}
+          </section>
+        )}
+      </div>
+    </main>
   );
 }
