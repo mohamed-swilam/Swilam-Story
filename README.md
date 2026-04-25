@@ -1,369 +1,366 @@
-# MowaChat Project
+<div align="center">
 
-A full-stack social media feature that allows users to upload, view, and interact with stories, similar to Instagram or Snapchat.
+<img src="https://img.shields.io/badge/MowaChat-v2.0.4-a855f7?style=for-the-badge&logoColor=white" />
 
-## Table of Contents
+# 💬 MowaChat
 
-- [Features](#features)  
-- [Technologies](#technologies)  
-- [Getting Started](#getting-started)  
-- [API Endpoints](#api-endpoints)  
-- [Folder Structure](#folder-structure)  
-- [License](#license)  
+### A full-stack real-time social messaging platform
 
-## Features
+*Stories · Direct Messages · Group Chats · Voice Messages · Live Notifications*
 
-- **User Authentication**: Register, login, and protected routes.  
-- **Story Upload**: Users can upload images or videos as stories.  
-- **Story Viewing**: Stories display with progress bars and swipe navigation.  
-- **Viewers**: Track and show who viewed each story.  
-- **Delete Story**: Users can delete their own stories.  
-- **Responsive UI**: Fully responsive front-end with React & Tailwind CSS.  
-- **Backend API**: Node.js + Express.js with MongoDB database.  
-- **Cloud Storage**: Cloudinary for image/video storage.  
+<br/>
 
-## Technologies
+[![Next.js](https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-20-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org/)
+[![Socket.io](https://img.shields.io/badge/Socket.io-4.8-010101?style=flat-square&logo=socket.io)](https://socket.io/)
+[![MongoDB](https://img.shields.io/badge/MongoDB-7-47A248?style=flat-square&logo=mongodb&logoColor=white)](https://www.mongodb.com/)
+[![Redis](https://img.shields.io/badge/Redis-5-DC382D?style=flat-square&logo=redis&logoColor=white)](https://redis.io/)
+[![TailwindCSS](https://img.shields.io/badge/Tailwind-4-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 
-**Frontend:**
-- React.js (Next.js App Router)  
-- Tailwind CSS  
-- TypeScript  
+</div>
 
-**Backend:**  
-- Node.js & Express.js  
-- MongoDB & Mongoose  
-- Cloudinary  
-- Multer for file uploads  
+---
 
-**Others:**  
-- Axios for API calls  
-- JWT Authentication  
-- React Swipeable for story navigation  
+## ✨ Features
 
-## Getting Started
+### 📸 Stories
+- Upload **image, video, text, and voice** stories
+- Auto-expire after **24 hours** (MongoDB TTL)
+- Real-time viewer tracking & live reaction bar (8 emoji)
+- Reply to stories directly into DMs
+- Explore page for discovering public stories
+- Progress bar with pause/resume on hold
+
+### 💬 Messaging
+- **Direct Messages** and **Group Chats**
+- Rich media: images, videos, files, and **voice messages** with waveform
+- Reply to specific messages with preview
+- Delete for me / **Unsend for everyone**
+- Emoji reactions with optimistic UI
+- In-chat **search** across message history
+- Camera capture directly from chat
+- File preview modal with multi-file support
+
+### 🔔 Real-time Engine
+- Live **typing indicators**
+- Online presence with **last seen** privacy controls
+- **Read receipts** (respects recipient privacy settings)
+- Instant message delivery via WebSocket
+- Browser **push notifications** (opt-in)
+
+### 🔒 Privacy & Security
+- Public / **Private accounts**
+- Block / unblock users
+- Last seen visibility: Everyone / Followers / Nobody
+- Read receipts on/off toggle
+- JWT authentication with **Redis token blacklist**
+- Per-conversation notification preferences
+
+### 🎨 Customization
+- Per-chat **accent color** override
+- Custom **chat wallpapers** (upload or URL)
+- Global **dark / light theme**
+- Per-conversation settings reset
+
+---
+
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────────────┐
+│                  Client (Next.js)            │
+│  React Query ──► UI Components ──► Socket.io │
+└──────────────────────┬──────────────────────┘
+                       │ HTTP + WebSocket
+┌──────────────────────▼──────────────────────┐
+│              Server (Express 5)              │
+│  REST API  ──► Controllers ──► Socket.io     │
+└────────┬──────────────────┬─────────────────┘
+         │                  │
+    ┌────▼────┐        ┌─────▼─────┐
+    │ MongoDB │        │   Redis   │
+    │  + TTL  │        │ (Online / │
+    │ Indexes │        │  Tokens)  │
+    └─────────┘        └───────────┘
+                             │
+                    ┌────────▼────────┐
+                    │   Cloudinary    │
+                    │ (Media Storage) │
+                    └─────────────────┘
+```
+
+### Key Engineering Decisions
+| Decision | Rationale |
+|----------|-----------|
+| **Socket.io Singleton** | Single persistent connection across route changes |
+| **Redis Heartbeat** (20s) | Lightweight online presence without DB polling |
+| **Optimistic UI** via React Query | Instant feedback, rollback on error |
+| **JWT + Redis Blacklist** | Stateless auth with immediate logout capability |
+| **MongoDB TTL Indexes** | Automatic story & notification expiry, zero cron jobs |
+| **Cursor-based Pagination** | Stable infinite scroll without page-skip artifacts |
+
+---
+
+## 🛠️ Tech Stack
+
+### Frontend
+| Technology | Version | Purpose |
+|------------|---------|---------|
+| Next.js | 16 | App Router, SSR, routing |
+| TypeScript | 5 | Type safety |
+| TailwindCSS | 4 | Utility-first styling |
+| TanStack React Query | 5 | Server state, caching, optimistic updates |
+| Socket.io Client | 4.8 | Real-time bidirectional events |
+| Framer Motion | 12 | Animations & transitions |
+| Lucide React | 0.56 | Icon system |
+
+### Backend
+| Technology | Version | Purpose |
+|------------|---------|---------|
+| Node.js | 20 | Runtime |
+| Express | 5 | REST API framework |
+| Socket.io | 4.8 | WebSocket server |
+| Mongoose | 9 | MongoDB ODM |
+| Redis | 5 | Online presence, token blacklist |
+| Cloudinary | 2 | Media storage & CDN |
+| JWT | 9 | Authentication |
+| Multer | 2 | File upload middleware |
+| bcryptjs | 3 | Password hashing |
+
+---
+
+## 🚀 Getting Started
 
 ### Prerequisites
+- Node.js **≥ 20.9.0**
+- MongoDB Atlas or local instance
+- Redis instance (local or cloud)
+- Cloudinary account
 
-- Node.js >= 18  
-- npm or yarn  
-- MongoDB Atlas or local MongoDB  
-- Cloudinary account  
-
-### Installation
-
-1. Clone the repository:
+### 1. Clone the Repository
 ```bash
-git clone https://github.com/mohamed-swilam/Swilam-Story.git
-cd Swilam-Story
+git clone https://github.com/your-username/mowachat.git
+cd mowachat
 ```
 
-2. Install dependencies for backend:
-
-```
+### 2. Backend Setup
+```bash
 cd backend
 npm install
 ```
 
-3. Set up .env for backend:
-
+Create `.env`:
+```env
+SERVER_PORT=3000
+DB_URI=mongodb+srv://...
+JWT_SECRET=your_super_secret_key
+REDIS_URL=redis://localhost:6379
+CLOUD_NAME=your_cloudinary_name
+CLOUD_API_KEY=your_cloudinary_key
+CLOUD_API_SECRET=your_cloudinary_secret
+CLIENT_URL=http://localhost:3001
 ```
-PORT=3000
-MONGO_URI=your_mongodb_uri
-CLOUDINARY_CLOUD_NAME=your_cloud_name
-CLOUDINARY_API_KEY=your_api_key
-CLOUDINARY_API_SECRET=your_api_secret
-JWT_SECRET=your_jwt_secret
-```
 
-4. Run backend:
-
-```
+```bash
 npm run dev
 ```
 
-5. Install dependencies for frontend:
-
-```
+### 3. Frontend Setup
+```bash
 cd ../frontend
 npm install
+```
+
+Create `.env.local`:
+```env
+NEXT_PUBLIC_API_URL=http://localhost:3000
+NEXT_PUBLIC_SOCKET_URL=http://localhost:3000
+```
+
+```bash
 npm run dev
 ```
 
-6. Open browser at http://localhost:3001
+Open [http://localhost:3001](http://localhost:3001)
 
+---
 
-## API Endpoints
+## 📁 Project Structure
+
+```
+mowachat/
+├── backend/
+│   └── src/
+│       ├── config/          # Database connection
+│       ├── controllers/     # Route handlers
+│       │   ├── userController.js
+│       │   ├── storyController.js
+│       │   ├── conversationController.js
+│       │   └── notificationController.js
+│       ├── middlewares/     # Auth, file upload
+│       ├── models/          # Mongoose schemas
+│       │   ├── User.js
+│       │   ├── Story.js
+│       │   ├── Conversation.js
+│       │   ├── Message.js
+│       │   └── Notification.js
+│       ├── routes/          # Express routers
+│       ├── services/        # Cloudinary upload/delete
+│       ├── socket/          # Socket.io event handlers
+│       └── utils/           # JWT, Redis, AppError
+│
+└── frontend/
+    ├── app/                 # Next.js App Router
+    │   ├── (auth)/          # Login, Register
+    │   └── (main)/          # Protected routes
+    │       ├── messages/    # Chat pages
+    │       ├── stories/     # Story viewer & feed
+    │       ├── explore/     # Discover users
+    │       ├── notifications/
+    │       └── profile/     # Settings pages
+    ├── components/
+    │   ├── messages/        # Chat UI components
+    │   ├── stories/         # Story UI components
+    │   ├── modals/          # Reusable modals
+    │   └── ui/              # Base UI components
+    ├── hooks/               # Custom React hooks
+    ├── lib/                 # API client, query keys
+    └── types/               # TypeScript interfaces
+```
+
+---
+
+## 🔌 API Endpoints
 
 ### Authentication
-
-#### Login
-
-```http
-POST /user/login
 ```
-
-**Body:**
-
-```json
-{
-  "username": "your_username",
-  "password": "your_password"
-}
-```
-
-**Response:**
-
-```json
-{
-  "token": "jwt_token_here"
-}
-```
-
-#### Register
-
-```http
-POST /user/register
-```
-
-**Body:** FormData (includes username, password, profile picture, etc.)
-
-**Response:**
-
-```json
-{
-    "success": true,
-    "message": "User registered successfully",
-}
+POST   /user/register          Register new user
+POST   /user/login             Login, returns JWT
+POST   /user/logout            Blacklist token
+POST   /user/auth              Verify token + get profile
 ```
 
 ### Stories
-
-#### Get Feed
-
-```http
-GET /stories/feed
+```
+GET    /stories/feed           Following stories feed
+GET    /stories/explore        Public stories grid
+GET    /stories/:userId        User's stories
+POST   /stories/upload         Create story (multipart)
+POST   /stories/:id/view       Record a view
+POST   /stories/:id/react      Toggle emoji reaction
+DELETE /stories/delete/:id     Delete own story
 ```
 
-**Headers:**
-
-```makefile
-Authorization: <token>
+### Conversations & Messages
+```
+GET    /api/conversations              List chats
+POST   /api/conversations              Create / get DM
+GET    /api/conversations/:id/messages Paginated messages
+DELETE /api/conversations/:id          Delete for me
+POST   /api/conversations/upload       Upload media
+POST   /api/conversations/voice        Upload voice message
+DELETE /api/conversations/messages/:id Delete / unsend
+POST   /api/conversations/messages/:id/react Toggle reaction
 ```
 
-**Response:**
-
-```json
-[
-  {
-    "storyOwner": "owner_id",
-    "hasNewStory": true,
-    "username": "user_name",
-    "user_pic": "user_pic",
-    "latestStoryDate": "latestStoryDate"
-  },
-]
+### Notifications
+```
+GET    /api/notifications        Paginated notifications
+PATCH  /api/notifications/read-all   Mark all read
+PATCH  /api/notifications/:id/read   Mark one read
+DELETE /api/notifications/:id        Delete one
 ```
 
-#### Get User Stories
-
-```http
-GET /stories/:user_id
+### Users
+```
+GET    /user/explore            Search / suggest users
+GET    /user/:id/profile        Get public profile
+POST   /user/:id/follow         Toggle follow
+GET    /user/:id/followers      Followers list
+GET    /user/:id/following      Following list
+PATCH  /user/update-profile     Update name/bio/photo
+PATCH  /user/update-settings    Privacy & notifications
+POST   /user/block/:id          Block user
+POST   /user/unblock/:id        Unblock user
 ```
 
-**Headers:**
+---
 
-```makefile
-Authorization: <token>
+## 🔄 Socket Events
+
+### Client → Server
+| Event | Payload | Description |
+|-------|---------|-------------|
+| `join_conversation` | `{ conversationId }` | Subscribe to chat room |
+| `send_message` | `{ conversationId, content, type, ... }` | Send a message |
+| `typing` | `{ conversationId }` | Start typing indicator |
+| `stop_typing` | `{ conversationId }` | Stop typing indicator |
+| `mark_read` | `{ conversationId }` | Mark messages as read |
+| `heartbeat` | — | Keep online status alive |
+| `update_user_prefs` | — | Refresh privacy settings |
+
+### Server → Client
+| Event | Description |
+|-------|-------------|
+| `message_received` | New message in any chat |
+| `messages_read` | Read receipt update |
+| `user_typing` | Someone is typing |
+| `user_stop_typing` | Stopped typing |
+| `user_online` / `user_offline` | Presence change |
+| `new_notification` | New notification |
+| `new_viewer` | Story was viewed |
+| `story_reaction` | Story got a reaction |
+| `new_story` | Someone posted a story |
+| `story_deleted` | Story was removed |
+| `message_deleted` | Message unsent for everyone |
+| `message_reaction` | Reaction on a message |
+| `profile_update` | User updated their profile |
+| `block_update` | Block/unblock event |
+| `privacy_update` | Account privacy changed |
+
+---
+
+## 📊 Database Schema Highlights
+
+### Story TTL
+```js
+storySchema.index({ createdAt: 1 }, { expireAfterSeconds: 86400 }); // 24h auto-delete
 ```
 
-**Response:** 
-```json
-[
-    {
-        "_id": "story_id",
-        "storyOwner": {
-            "_id": "owner_id",
-            "username": "owner_name",
-            "user_pic": "owner_pic"
-        },
-        "media_url": "story_url",
-        "media_type": "story_file_type",
-        "duration": 3,
-        "public_id": "cloudinary_public_id",
-        "createdAt": "date_of_create",
-        "updatedAt": "date_of_update",
-        "viewers":[],
-        "viewersCount": 2,
-        "mine": true,
-        "__v": 2,
-    },
-]  
+### Notification Dedup
+```js
+notificationSchema.index({ recipient: 1, sender: 1, type: 1, read: 1 });
+notificationSchema.index({ createdAt: 1 }, { expireAfterSeconds: 604800 }); // 7d
 ```
 
-#### View Story
-
-```http
-POST /stories/:story_id/view
+### Message Performance
+```js
+messageSchema.index({ conversationId: 1, createdAt: -1 }); // Fast paginated fetch
 ```
 
-**Headers:**
+---
 
-```makefile
-Authorization: <token>
-```
+## 🤝 Contributing
 
-**Response:**
+1. Fork the repo
+2. Create a feature branch: `git checkout -b feat/amazing-feature`
+3. Commit: `git commit -m 'feat: add amazing feature'`
+4. Push: `git push origin feat/amazing-feature`
+5. Open a Pull Request
 
-```json
-{
-  "success": true,
-  "message": "Story viewed successfully"
-}
-```
+---
 
-#### Upload Story
+## 📄 License
 
-```http
-POST /stories/upload
-```
+Distributed under the **MIT License**. See `LICENSE` for more information.
 
-**Headers:**
+---
 
-```makefile
-Authorization: <token>
-Content-Type: multipart/form-data
-```
+<div align="center">
 
-**Body:** FormData with file and optional fields
+**Built with ❤️ by Mohamed Hamad Swilam**
 
-**Response:**
+⭐ Star this repo if you found it helpful!
 
-```json
-{
-    "_id": "story_id",
-    "storyOwner": "owner_id",
-    "media_url": "story_uel",
-    "media_type": "story_file_type",
-    "duration": 3,
-    "public_id": "cloudinary_public_id",
-    "viewers": [],
-    "createdAt": "date_of_create",
-    "updatedAt": "date_of_update",
-    "__v": 0
-}
-```
-
-#### Delete Story
-
-```http
-DELETE /stories/:story_id
-```
-
-**Headers:**
-
-```makefile
-Authorization: <token>
-```
-
-**Response:**
-
-```json
-{
-  "success": true,
-  "message": "Story deleted successfully"
-}
-```
-
-
-## Folder Structure
-
-This document shows the full folder structure of the backend and frontend for the Social Stories project.
-
-### Backend
-
-```
-backend/
-│
-├── node_modules/
-├── src/
-│   ├── config/
-│   │   └── db.js
-│   ├── controllers/
-│   │   ├── storyController.js
-│   │   └── userController.js
-│   ├── middlewares/
-│   │   ├── auth.js
-│   │   └── upload.js
-│   ├── models/
-│   │   ├── Story.js
-│   │   └── User.js
-│   ├── routes/
-│   │   ├── storyRoute.js
-│   │   └── userRoute.js
-│   ├── services/
-│   │   ├── cloudinaryDelete.js
-│   │   └── cloudinaryUpload.js
-│   ├── utils/
-│   │   ├── appError.js
-│   │   ├── cloudinary.js
-│   │   └── redis.js
-│   └── server.js
-├── .env
-├── package-lock.json
-└── package.json
-```
-
-### Frontend
-
-```
-frontend/
-│
-├── .next/
-├── app/
-│   ├── page.tsx
-│   ├── layout.tsx
-│   ├── globals.css
-│   ├── not-found.tsx
-│   ├── login/page.tsx
-│   ├── register/page.tsx
-│   └── stories/
-│       ├── feed/page.tsx
-│       ├── upload/page.tsx
-│       └── [user_id]/page.tsx
-├── components/
-│   ├── ProtectedPage.tsx
-│   └── stories/
-│       ├── ProgressBar.tsx
-│       ├── StoriesBar.tsx
-│       ├── StoryHeader.tsx
-│       ├── StoryMedia.tsx
-│       └── ViewersModel.tsx
-├── hooks/
-│   └── useStories.ts
-├── lib/
-│   ├── api.ts
-│   └── utils.ts
-├── node_modules/
-├── public/
-│   ├── file.svg
-│   ├── globe.svg
-│   ├── next.svg
-│   ├── user_profile.jpg
-│   ├── vercel.svg
-│   └── window.svg
-├── types/
-│   └── stories.ts
-├── components.json
-├── eslint.config.mjs
-├── next-env.d.ts
-├── next.config.ts
-├── package-lock.json
-├── package.json
-├── postcss.config.mjs
-└── tsconfig.json
-```
-
-
-## License
-
-This project is created with ***Mohamed Hamad Swilam.***
+</div>
