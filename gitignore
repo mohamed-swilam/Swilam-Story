@@ -1,0 +1,22 @@
+# Turborepo
+.turbo
+
+# Dependencies
+node_modules
+
+# Build outputs
+.next
+dist
+
+# Env files
+.env
+.env.local
+.env*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
